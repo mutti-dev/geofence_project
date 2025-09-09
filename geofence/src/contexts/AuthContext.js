@@ -8,9 +8,23 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const register = async ({ name, email, password, role, circleName, inviteCode }) => {
+  const register = async ({
+    name,
+    email,
+    password,
+    role,
+    circleName,
+    inviteCode,
+  }) => {
     try {
-      const res = await registerApi(name, email, password, role, circleName, inviteCode);
+      const res = await registerApi(
+        name,
+        email,
+        password,
+        role,
+        circleName,
+        inviteCode
+      );
       if (res.token) {
         await AsyncStorage.setItem("token", res.token);
         setUser(res);
@@ -26,7 +40,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await loginApi(email, password);
     if (res.token) {
-      await AsyncStorage.setItem("token", res.token);
+      await AsyncStorage.setItem("user", JSON.stringify(res));
       setUser(res);
     }
     return res;

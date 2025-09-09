@@ -70,8 +70,8 @@ const AddPersonScreen = () => {
       if (isRefresh) setIsRefreshing(true);
       else setIsLoading(true);
 
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
+      // const token = await AsyncStorage.getItem("token");
+      if (!user.token) {
         Alert.alert("Error", "You are not logged in");
         return;
       }
@@ -99,90 +99,90 @@ const AddPersonScreen = () => {
   };
 
   // Generate code
-  const handleGenerateCode = async () => {
-    try {
-      setIsGenerating(true);
-      // Get token from storage
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        Alert.alert("Error", "You are not logged in");
-        return;
-      }
+  // const handleGenerateCode = async () => {
+  //   try {
+  //     setIsGenerating(true);
+  //     // Get token from storage
+  //     const token = await AsyncStorage.getItem("token");
+  //     if (!token) {
+  //       Alert.alert("Error", "You are not logged in");
+  //       return;
+  //     }
 
-      // Send request with Authorization header
-      const { data } = await API.post(
-        "/members/generate-code",
-        {}, // empty body
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  //     // Send request with Authorization header
+  //     const { data } = await API.post(
+  //       "/members/generate-code",
+  //       {}, // empty body
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
 
-      setGeneratedCode(data.code);
+  //     setGeneratedCode(data.code);
 
-      Alert.alert(
-        "Code Generated",
-        `Share this code with the member: ${data.code}`
-      );
-    } catch (error) {
-      console.log(
-        "Error generating code:",
-        error.response?.data || error.message
-      );
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to generate code"
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  //     Alert.alert(
+  //       "Code Generated",
+  //       `Share this code with the member: ${data.code}`
+  //     );
+  //   } catch (error) {
+  //     console.log(
+  //       "Error generating code:",
+  //       error.response?.data || error.message
+  //     );
+  //     Alert.alert(
+  //       "Error",
+  //       error.response?.data?.message || "Failed to generate code"
+  //     );
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // };
 
   // Join member using code
-  const handleJoinMember = async () => {
-    if (!joinCode.trim()) {
-      return Alert.alert("Error", "Please enter a code");
-    }
+  // const handleJoinMember = async () => {
+  //   if (!joinCode.trim()) {
+  //     return Alert.alert("Error", "Please enter a code");
+  //   }
 
-    try {
-      setIsLoading(true);
-      // Get token from storage
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        return Alert.alert("Error", "You are not logged in");
-      }
+  //   try {
+  //     setIsLoading(true);
+  //     // Get token from storage
+  //     const token = await AsyncStorage.getItem("token");
+  //     if (!token) {
+  //       return Alert.alert("Error", "You are not logged in");
+  //     }
 
-      // Send request with Authorization header
-      const { data } = await API.post(
-        "/members/join",
-        { code: joinCode },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+  //     // Send request with Authorization header
+  //     const { data } = await API.post(
+  //       "/members/join",
+  //       { code: joinCode },
+  //       {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       }
+  //     );
 
-      if (data.success) {
-        Alert.alert("Success", `${data.member.name} added successfully`);
-        fetchMembers(); // Refresh members list
-        setJoinCode("");
-      } else {
-        Alert.alert("Error", data.message || "Failed to join member");
-      }
-    } catch (error) {
-      console.log(
-        "Error joining member:",
-        error.response?.data || error.message
-      );
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Invalid code or member already exists"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     if (data.success) {
+  //       Alert.alert("Success", `${data.member.name} added successfully`);
+  //       fetchMembers(); // Refresh members list
+  //       setJoinCode("");
+  //     } else {
+  //       Alert.alert("Error", data.message || "Failed to join member");
+  //     }
+  //   } catch (error) {
+  //     console.log(
+  //       "Error joining member:",
+  //       error.response?.data || error.message
+  //     );
+  //     Alert.alert(
+  //       "Error",
+  //       error.response?.data?.message || "Invalid code or member already exists"
+  //     );
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   // Request invite code
   const handleGenerate = async () => {

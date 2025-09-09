@@ -1,3 +1,5 @@
+import User from "../models/User.js";
+
 export default function socketHandler(io) {
   io.on("connection", (socket) => {
     console.log("🔗 New client connected:", socket.id);
@@ -9,7 +11,6 @@ export default function socketHandler(io) {
 
     socket.on("updateLocation", async ({ userId, location }) => {
       try {
-        const { default: User } = await import("./models/User.js");
         const user = await User.findByIdAndUpdate(
           userId,
           { location },

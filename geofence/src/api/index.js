@@ -1,10 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-import MapboxGL from "@maplibre/maplibre-react-native";
+// import MapboxGL from "@maplibre/maplibre-react-native";
 
 // Agar tum dummy ya real token use karna chahte ho:
-MapboxGL.setAccessToken("pk.test"); 
+// MapboxGL.setAccessToken("pk.test"); 
 
 
 

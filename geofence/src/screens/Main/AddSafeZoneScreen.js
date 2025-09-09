@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -7,143 +7,175 @@ import {
   StyleSheet,
   StatusBar,
   Alert,
+  SafeAreaView,
 } from "react-native";
-import * as Maplibre from "@maplibre/maplibre-react-native";
+import MapView, { Marker, Circle } from "react-native-maps";
+import { LinearGradient } from "expo-linear-gradient";
+import { AuthContext } from "../../contexts/AuthContext";
+
 
 export default function AddSafeZoneScreen({ navigation, route }) {
   const addSafeZone = route.params?.addSafeZone;
-  console.log("AddSafeZoneScreen params:", route.params); 
   const [mapLocation, setMapLocation] = useState(null);
   const [radius, setRadius] = useState("");
-  const cameraRef = useRef(null);
-
-  // Move camera to selected location
-  useEffect(() => {
-    if (mapLocation && cameraRef.current?.setCamera) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [mapLocation.longitude, mapLocation.latitude],
-        zoomLevel: 14,
-        animationDuration: 1000,
-      });
-    }
-  }, [mapLocation]);
+  const [name, setName] = useState(""); // ✅ New state for safe zone name
+  const mapRef = useRef(null);
+  const { user } = useContext(AuthContext);
 
   const handleDone = () => {
-    if (!mapLocation || !radius)
-      return Alert.alert("Error", "Select location and radius");
-    addSafeZone(mapLocation, parseFloat(radius));
+    if (!mapLocation || !radius || !name) 
+      return Alert.alert("Error", "Select location, radius, and name");
+
+    addSafeZone({ coordinates: mapLocation, radius: parseFloat(radius), name });
+
+    // Emit to backend so other circle members get new zone
+    fetch("https://7c92e792db0f.ngrok-free.app/api/circles/add-safezone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        circleId: user.circle,
+        coordinates: mapLocation,
+        radius: parseFloat(radius),
+        name, // ✅ send name to backend
+      }),
+    });
+
     navigation.goBack();
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Selected location info */}
+      {/* Header */}
+      <LinearGradient colors={["#4A148C", "#6A1B9A"]} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Safe Zone</Text>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
+      {/* Safe Zone Name Input */}
       <View style={styles.card}>
-        <Text style={styles.heading}>Selected Location</Text>
-        <Text>Latitude: {mapLocation?.latitude ?? "Select location"}</Text>
-        <Text>Longitude: {mapLocation?.longitude ?? "Select location"}</Text>
+        <Text style={styles.cardTitle}>Safe Zone Name</Text>
+        <TextInput
+          style={styles.inputText}
+          placeholder="Enter safe zone name"
+          value={name}
+          onChangeText={setName}
+        />
       </View>
 
-      {/* Radius input + Done button */}
-      <View
-        style={[styles.card, { flexDirection: "row", alignItems: "center" }]}
-      >
+      {/* Location Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Selected Location</Text>
+        <Text>
+          Latitude: {mapLocation?.latitude?.toFixed(6) ?? "Select location"}
+        </Text>
+        <Text>
+          Longitude: {mapLocation?.longitude?.toFixed(6) ?? "Select location"}
+        </Text>
+      </View>
+
+      {/* Radius Input */}
+      <View style={[styles.card, { flexDirection: "row", alignItems: "center" }]}>
         <TextInput
           style={[styles.inputText, { flex: 1 }]}
           placeholder="Radius (km)"
           keyboardType="numeric"
           value={radius.toString()}
-          onChangeText={(text) => setRadius(text)}
+          onChangeText={setRadius}
         />
         <TouchableOpacity style={styles.button} onPress={handleDone}>
-          <Text style={{ color: "#fff" }}>Done</Text>
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>Done</Text>
         </TouchableOpacity>
       </View>
 
       {/* Map */}
       <View style={styles.mapContainer}>
-        <Maplibre.MapView
+        <MapView
+          ref={mapRef}
           style={styles.map}
-          styleURL="https://demotiles.maplibre.org/style.json"
-          onPress={(e) => {
-            const coords = e.geometry?.coordinates;
-            if (coords)
-              setMapLocation({ longitude: coords[0], latitude: coords[1] });
+          initialRegion={{
+            latitude: 33.6844,
+            longitude: 73.0479,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
           }}
+          onPress={(e) => setMapLocation(e.nativeEvent.coordinate)}
         >
-          <Maplibre.Camera
-            ref={cameraRef}
-            centerCoordinate={
-              mapLocation
-                ? [mapLocation.longitude, mapLocation.latitude]
-                : [73.0479, 33.6844]
-            }
-            zoomLevel={mapLocation ? 14 : 5}
-            animationMode="flyTo"
-          />
-
-          {/* Circle showing safe zone */}
+          {mapLocation && <Marker coordinate={mapLocation} />}
           {mapLocation && radius ? (
-            <Maplibre.ShapeSource
-              id="safeZoneSource"
-              shape={{
-                type: "Feature",
-                geometry: {
-                  type: "Point",
-                  coordinates: [mapLocation.longitude, mapLocation.latitude],
-                },
-              }}
-            >
-              <Maplibre.CircleLayer
-                id="safeZoneCircle"
-                style={{
-                  circleRadius: parseFloat(radius) * 1000, // km -> meters
-                  circleColor: "rgba(0,255,0,0.3)",
-                  circleStrokeWidth: 2,
-                  circleStrokeColor: "green",
-                }}
-              />
-            </Maplibre.ShapeSource>
-          ) : null}
-
-          {/* Marker at selected location */}
-          {mapLocation && (
-            <Maplibre.PointAnnotation
-              id="selectedLocation"
-              coordinate={[mapLocation.longitude, mapLocation.latitude]}
+            <Circle
+              center={mapLocation}
+              radius={parseFloat(radius) * 1000}
+              fillColor="rgba(0,200,0,0.2)"
+              strokeColor="#008080"
+              strokeWidth={2}
             />
-          )}
-        </Maplibre.MapView>
+          ) : null}
+        </MapView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  card: {
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    margin: 10,
-    borderRadius: 8,
+  container: { flex: 1, backgroundColor: "#F5F5F5" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
   },
-  heading: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backText: { fontSize: 20, color: "#fff", fontWeight: "bold" },
+  headerTitle: { fontSize: 18, fontWeight: "bold", color: "#fff" },
+
+  card: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 12,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 6,
+    color: "#4A148C",
+  },
+
   inputText: {
     borderWidth: 1,
     borderColor: "#ccc",
-    padding: 5,
-    borderRadius: 5,
+    borderRadius: 8,
+    padding: 8,
     height: 40,
+    backgroundColor: "#fff",
   },
   button: {
     marginLeft: 10,
-    padding: 10,
-    backgroundColor: "#008080",
-    borderRadius: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#4A148C",
+    borderRadius: 8,
   },
-  mapContainer: { flex: 1, margin: 10, borderRadius: 8, overflow: "hidden" },
+
+  mapContainer: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+    elevation: 3,
+  },
   map: { flex: 1 },
 });

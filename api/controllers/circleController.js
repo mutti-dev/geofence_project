@@ -62,11 +62,11 @@ export const getMyCircle = async (req, res) => {
     const userId = req.user.id;
 
     const user = await User.findById(userId);
-    if (!user.circleId) {
+    if (!user.circle) {
       return res.status(404).json({ message: "User not in a circle" });
     }
 
-    const circle = await Circle.findById(user.circleId).populate(
+    const circle = await Circle.findById(user.circle).populate(
       "members",
       "name email location"
     );

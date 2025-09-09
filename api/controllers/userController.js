@@ -15,7 +15,7 @@ export const updateLocation = async (req, res) => {
     );
 
     // Check for geofence triggers
-    const circle = await Circle.findById(user.circleId).populate("members");
+    const circle = await Circle.findById(user.circle).populate("members");
     if (!circle) return res.json(user);
 
     for (let member of circle.members) {
