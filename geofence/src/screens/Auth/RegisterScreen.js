@@ -71,23 +71,21 @@ const RegisterScreen = ({ navigation }) => {
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#008080" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join your circle today</Text>
         </View>
 
         {/* Form */}
         <View style={styles.formContainer}>
           
-          {/* Basic Info */}
+          {/* Username Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
             <TextInput 
-              placeholder="Enter your full name" 
+              placeholder="Username" 
               value={name} 
               onChangeText={setName} 
               style={styles.input}
@@ -95,10 +93,10 @@ const RegisterScreen = ({ navigation }) => {
             />
           </View>
 
+          {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput 
-              placeholder="Enter your email" 
+              placeholder="Email" 
               value={email} 
               onChangeText={setEmail} 
               keyboardType="email-address" 
@@ -108,10 +106,10 @@ const RegisterScreen = ({ navigation }) => {
             />
           </View>
 
+          {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
             <TextInput 
-              placeholder="Create a strong password" 
+              placeholder="Password" 
               value={password} 
               onChangeText={setPassword} 
               secureTextEntry 
@@ -122,30 +120,30 @@ const RegisterScreen = ({ navigation }) => {
 
           {/* Role Selection */}
           <View style={styles.roleContainer}>
-            <Text style={styles.roleLabel}>Choose your role</Text>
+            <Text style={styles.roleLabel}>Select Role</Text>
             <View style={styles.roleButtons}>
               <TouchableOpacity 
-                onPress={() => setRole("admin")} 
-                style={[styles.roleButton, role === "admin" && styles.roleButtonActive]}
+                onPress={() => setRole("member")} 
+                style={styles.roleOption}
               >
-                <Text style={[styles.roleButtonText, role === "admin" && styles.roleButtonTextActive]}>
-                  Admin
-                </Text>
-                <Text style={[styles.roleButtonSubtext, role === "admin" && styles.roleButtonSubtextActive]}>
-                  Create a new circle
-                </Text>
+                <View style={styles.radioContainer}>
+                  <View style={[styles.radioButton, role === "member" && styles.radioButtonSelected]}>
+                    {role === "member" && <View style={styles.radioButtonInner} />}
+                  </View>
+                  <Text style={styles.roleText}>Member</Text>
+                </View>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                onPress={() => setRole("member")} 
-                style={[styles.roleButton, role === "member" && styles.roleButtonActive]}
+                onPress={() => setRole("admin")} 
+                style={styles.roleOption}
               >
-                <Text style={[styles.roleButtonText, role === "member" && styles.roleButtonTextActive]}>
-                  Member
-                </Text>
-                <Text style={[styles.roleButtonSubtext, role === "member" && styles.roleButtonSubtextActive]}>
-                  Join existing circle
-                </Text>
+                <View style={styles.radioContainer}>
+                  <View style={[styles.radioButton, role === "admin" && styles.radioButtonSelected]}>
+                    {role === "admin" && <View style={styles.radioButtonInner} />}
+                  </View>
+                  <Text style={styles.roleText}>Admin</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -153,19 +151,16 @@ const RegisterScreen = ({ navigation }) => {
           {/* Conditional Fields */}
           {role === "admin" ? (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Circle Name</Text>
               <TextInput 
-                placeholder="Enter your circle name" 
+                placeholder="Enter Circle Name As Admin" 
                 value={circleName} 
                 onChangeText={setCircleName} 
                 style={styles.input}
                 placeholderTextColor="#999"
               />
-              <Text style={styles.inputHint}>This will be the name of your new circle</Text>
             </View>
           ) : (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Invite Code</Text>
               <TextInput 
                 placeholder="Enter invite code" 
                 value={inviteCode} 
@@ -174,13 +169,12 @@ const RegisterScreen = ({ navigation }) => {
                 placeholderTextColor="#999"
                 autoCapitalize="characters"
               />
-              <Text style={styles.inputHint}>Get this code from your circle admin</Text>
             </View>
           )}
 
           {/* Register Button */}
           <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-            <Text style={styles.registerButtonText}>Create Account</Text>
+            <Text style={styles.registerButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
           {/* Login Link */}
@@ -189,7 +183,7 @@ const RegisterScreen = ({ navigation }) => {
             onPress={() => navigation.navigate("Login")}
           >
             <Text style={styles.loginLinkText}>
-              Already have an account? <Text style={styles.loginLinkHighlight}>Sign In</Text>
+              Already have an account? <Text style={styles.loginLinkHighlight}>Login</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -203,137 +197,118 @@ export default RegisterScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   header: {
     alignItems: 'center',
-    marginTop: 60,
     marginBottom: 40,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#2d9d91',
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#e0e0e0',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
-    color: '#2c3e50',
-  },
-  inputHint: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginTop: 4,
+    backgroundColor: '#ffffff',
+    color: '#333',
   },
   roleContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 16,
   },
   roleLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: '500',
+    color: '#333',
     marginBottom: 12,
   },
   roleButtons: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-around',
   },
-  roleButton: {
+  roleOption: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+  },
+  radioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
+    borderColor: '#ccc',
+    marginRight: 8,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  roleButtonActive: {
-    borderColor: '#008080',
-    backgroundColor: '#e6f7f7',
+  radioButtonSelected: {
+    borderColor: '#2d9d91',
   },
-  roleButtonText: {
+  radioButtonInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2d9d91',
+  },
+  roleText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#6c757d',
-    marginBottom: 4,
-  },
-  roleButtonTextActive: {
-    color: '#008080',
-  },
-  roleButtonSubtext: {
-    fontSize: 12,
-    color: '#adb5bd',
-    textAlign: 'center',
-  },
-  roleButtonSubtextActive: {
-    color: '#006666',
+    color: '#333',
   },
   registerButton: {
-    backgroundColor: '#008080',
+    backgroundColor: '#ff7f5c',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#008080',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginBottom: 16,
   },
   registerButtonText: {
     color: '#ffffff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   loginLink: {
-    marginTop: 24,
     alignItems: 'center',
   },
   loginLinkText: {
     fontSize: 16,
-    color: '#6c757d',
+    color: '#666',
   },
   loginLinkHighlight: {
-    color: '#008080',
+    color: '#2d9d91',
     fontWeight: '600',
   },
 });

@@ -453,7 +453,7 @@ const AddPersonScreen = () => {
         </View>
 
         {/* Logout Section */}
-        <View style={[styles.section, { backgroundColor: colors.cardBg }]}>
+        {/* <View style={[styles.section, { backgroundColor: colors.cardBg }]}>
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: colors.button2 }]}
             onPress={() => {
@@ -469,7 +469,7 @@ const AddPersonScreen = () => {
           >
             <Text style={styles.logoutButtonText}>🚪 Sign Out</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

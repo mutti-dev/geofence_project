@@ -48,92 +48,87 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#008080" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.formContainer}>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8f8f8" />
+      
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           
-          {/* Email Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <TextInput 
-              placeholder="Enter your email" 
-              value={email} 
-              onChangeText={setEmail} 
-              keyboardType="email-address" 
-              style={styles.input}
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Welcome Back</Text>
           </View>
 
-          {/* Password Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput 
-              placeholder="Enter your password" 
-              value={password} 
-              onChangeText={setPassword} 
-              secureTextEntry 
-              style={styles.input}
-              placeholderTextColor="#999"
-            />
+          {/* Form Container */}
+          <View style={styles.formContainer}>
+            
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <TextInput 
+                placeholder="Email" 
+                value={email} 
+                onChangeText={setEmail} 
+                keyboardType="email-address" 
+                style={styles.input}
+                placeholderTextColor="#aaa"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <TextInput 
+                placeholder="Password" 
+                value={password} 
+                onChangeText={setPassword} 
+                secureTextEntry 
+                style={styles.input}
+                placeholderTextColor="#aaa"
+              />
+            </View>
+
+            {/* Login Button */}
+            <TouchableOpacity 
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? "Signing In..." : "Login"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Links Container */}
+            <View style={styles.linksContainer}>
+              {/* Forgot Password Link */}
+              <TouchableOpacity style={styles.linkButton}>
+                <Text style={styles.linkText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              {/* Register Link */}
+              <TouchableOpacity 
+                style={styles.linkButton}
+                onPress={() => navigation.navigate("Register")}
+              >
+                <Text style={styles.linkText}>
+                  Don't have an account? <Text style={styles.linkHighlight}>Register</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+
           </View>
-
-          {/* Forgot Password Link */}
-          <TouchableOpacity style={styles.forgotPasswordLink}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          {/* Login Button */}
-          <TouchableOpacity 
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? "Signing In..." : "Sign In"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Register Link */}
-          <TouchableOpacity 
-            style={styles.registerLink} 
-            onPress={() => navigation.navigate("Register")}
-          >
-            <Text style={styles.registerLinkText}>
-              Don't have an account? <Text style={styles.registerLinkHighlight}>Create Account</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -142,125 +137,89 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8f8f8',
+  },
+  keyboardContainer: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   header: {
     alignItems: 'center',
-    marginTop: 80,
-    marginBottom: 40,
+    marginBottom: 60,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontWeight: '600',
+    color: '#008080',
+    textAlign: 'center',
   },
   formContainer: {
+    width: '100%',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  input: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#333',
     shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  loginButton: {
+    backgroundColor: '#ff7f50',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 32,
+    shadowColor: '#ff7f50',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
-    backgroundColor: '#f8f9fa',
-    color: '#2c3e50',
-  },
-  forgotPasswordLink: {
-    alignItems: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#008080',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#008080',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#008080',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   loginButtonDisabled: {
-    backgroundColor: '#95a5a6',
-    shadowOpacity: 0.1,
+    backgroundColor: '#ccc',
+    shadowOpacity: 0,
   },
   loginButtonText: {
     color: '#ffffff',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e9ecef',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#6c757d',
-    fontSize: 14,
-  },
-  registerLink: {
-    alignItems: 'center',
-  },
-  registerLinkText: {
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  registerLinkHighlight: {
-    color: '#008080',
     fontWeight: '600',
   },
-  footer: {
-    marginTop: 40,
-    paddingHorizontal: 20,
+  linksContainer: {
+    alignItems: 'center',
   },
-  footerText: {
-    fontSize: 12,
-    color: '#6c757d',
+  linkButton: {
+    paddingVertical: 12,
+  },
+  linkText: {
+    fontSize: 16,
+    color: '#008080',
     textAlign: 'center',
-    lineHeight: 18,
+  },
+  linkHighlight: {
+    color: '#008080',
+    fontWeight: '600',
   },
 });

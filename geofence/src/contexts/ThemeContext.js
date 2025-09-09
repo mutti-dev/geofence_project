@@ -7,12 +7,29 @@ export const ThemeProvider = ({ children }) => {
   const colorScheme = Appearance.getColorScheme();
   const [currentTheme, setCurrentTheme] = useState(colorScheme || "light");
 
+  const palette = {
+    primary: "#008080", // teal
+    accent: "#ff7f50", // coral/orange
+    backgroundLight: "#ffffff",
+    backgroundDark: "#121212",
+  };
+
+  const colors = {
+    primary: palette.primary,
+    accent: palette.accent,
+    background:
+      currentTheme === "dark"
+        ? palette.backgroundDark
+        : palette.backgroundLight,
+    text: currentTheme === "dark" ? "#fff" : "#222",
+  };
+
   const toggleTheme = (theme) => {
     if (theme === "system") {
       const systemTheme = Appearance.getColorScheme();
       setCurrentTheme(systemTheme);
     } else {
-      setCurrentTheme(theme);
+      setCurrentTheme(theme === "dark" ? "dark" : "light");
     }
   };
 
@@ -24,8 +41,10 @@ export const ThemeProvider = ({ children }) => {
   }, [currentTheme]);
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ currentTheme, toggleTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   );
 };
+
+export default ThemeContext;
