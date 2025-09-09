@@ -125,4 +125,3 @@ Notes:
 
 ----
 
-If you want, I can add more specific setup steps (exact environment variables, script entries in package.json, and platform-specific native install steps for the map library).

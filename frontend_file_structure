@@ -1,0 +1,39 @@
+src
+├── api
+│   ├── authApi.js
+│   ├── index.js
+│   ├── locationApi.js
+│   ├── memberApi.js
+│   └── taskApi.js
+├── components
+│   ├── CircleMember.js
+│   ├── MapMarker.js
+│   └── TaskCard.js
+├── contexts
+│   ├── AuthContext.js
+│   ├── NotificationContext.js
+│   └── ThemeContext.js
+├── navigation
+│   ├── AppNavigator.js
+│   ├── DrawerNavigator.js
+│   └── TabNavigator.js
+├── screens
+│   ├── Auth
+│   │   ├── LoginScreen.js
+│   │   └── RegisterScreen.js
+│   ├── Main
+│   │   ├── AddPersonScreen.js
+│   │   ├── GeofenceScreen.js
+│   │   ├── MapScreen.js
+│   │   └── TaskScreen.js
+│   └── Settings
+│       ├── ProfileScreen.js
+│       └── SettingsScreen.js
+├── store
+│   ├── authSlice.js
+│   ├── index.js
+│   └── taskSlice.js
+└── utils
+    ├── colors.js
+    ├── constants.js
+    └── notificationHelper.js

@@ -1,0 +1,42 @@
+api
+├── .env
+├── .gitignore
+├── config
+│   ├── db.js
+│   └── logger.js
+├── controllers
+│   ├── authController.js
+│   ├── circleController.js
+│   ├── memberController.js
+│   ├── notificationController.js
+│   ├── taskController.js
+│   └── userController.js
+├── middleware
+│   ├── authMiddleware.js
+│   └── errorMiddleware.js
+├── models
+│   ├── Circle.js
+│   ├── Notification.js
+│   ├── Task.js
+│   └── User.js
+├── package-lock.json
+├── package.json
+├── routes
+│   ├── authRoutes.js
+│   ├── circleRoutes.js
+│   ├── memberRoutes.js
+│   ├── notificationRoutes.js
+│   ├── taskRoutes.js
+│   └── userRoutes.js
+├── server.js
+├── services
+│   ├── geofenceService.js
+│   ├── notificationService.js
+│   └── socket.js
+├── sockets
+│   ├── locationSocket.js
+│   └── notificationSocket.js
+└── utils
+    ├── generateCode.js
+    ├── sendEmail.js
+    └── sendPush.js
