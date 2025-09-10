@@ -8,9 +8,11 @@ const InviteSchema = new mongoose.Schema({
 const CircleSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    admin: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     invite: InviteSchema,
+    shareCode: { type: String },
+    codeExpiresAt: { type: Date },
   },
   { timestamps: true }
 );
@@ -19,4 +21,3 @@ const CircleSchema = new mongoose.Schema(
 CircleSchema.index({ "invite.code": 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Circle", CircleSchema);
- 

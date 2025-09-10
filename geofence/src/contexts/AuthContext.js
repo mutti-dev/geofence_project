@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerApi, loginApi } from "../api/authApi";
+import { registerForPushNotificationsAsync } from "../utils/notificationHelper";
+
 
 export const AuthContext = createContext();
 
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }) => {
     if (res.token) {
       await AsyncStorage.setItem("user", JSON.stringify(res));
       setUser(res);
+      registerForPushNotificationsAsync();
     }
     return res;
   };

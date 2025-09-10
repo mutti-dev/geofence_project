@@ -4,17 +4,29 @@ import {
   createTask,
   updateTaskStatus,
   getCircleTasks,
+  deleteTask,
+  acceptTask,
+  declineTask,
 } from "../controllers/taskController.js";
 
 const router = express.Router();
 
 // Assign a task
-router.post("/create", protect, createTask);
-
-// Update task status (accept/deny/complete)
-router.put("/:taskId/status", protect, updateTaskStatus);
+router.post("/", protect, createTask);
 
 // Get all tasks for my circle
-router.get("/circle", protect, getCircleTasks);
+router.get("/my", protect, getCircleTasks);
+
+// Update task status (accept/deny/complete)
+router.put("/:id/status", protect, updateTaskStatus);
+
+// Delete a task
+router.delete("/:id", protect, deleteTask);
+
+// Accept a task
+router.post("/:id/accept", protect, acceptTask);
+
+// Decline a task
+router.post("/:id/decline", protect, declineTask);
 
 export default router;

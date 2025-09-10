@@ -6,7 +6,8 @@ const TaskCard = ({ task, onAccept, onDecline }) => {
     <View style={styles.card}>
       <Text style={styles.title}>{task.title}</Text>
       <Text style={styles.description}>{task.description}</Text>
-      <Text style={styles.deadline}>Deadline: {new Date(task.deadline).toLocaleString()}</Text>
+      <Text style={styles.description}>Assigned to: {task.assignedTo.name}</Text>
+      <Text style={styles.deadline}>Deadline: {new Date(task.updatedAt).toLocaleString()}</Text>
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.button, { backgroundColor: "#008080" }]} onPress={() => onAccept(task._id)}>
           <Text style={styles.buttonText}>Accept</Text>

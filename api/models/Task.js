@@ -11,6 +11,7 @@ const taskSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "denied", "completed"],
       default: "pending",
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

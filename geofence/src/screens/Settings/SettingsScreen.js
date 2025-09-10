@@ -19,6 +19,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import * as Location from "expo-location";
 import API from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingScreen = () => {
   const themeContext = useContext(ThemeContext);
@@ -138,9 +139,11 @@ const SettingScreen = () => {
   // Save notification settings to backend
   const saveNotificationSettings = async () => {
     try {
+      const token = user?.token || (await AsyncStorage.getItem('token'));
+      if (!token) return;
+
       const notificationSettings = {
-        userId: user?._id || user?.id || 'current_user_id',
-        theme: currentTheme,
+        // only send notifications object; server should infer user from token
         notifications: {
           geofenceEnter,
           geofenceExit,
@@ -150,19 +153,24 @@ const SettingScreen = () => {
           taskAccepted,
           taskDenied,
         },
+        theme: currentTheme,
       };
 
-      await API.post('/settings/notifications', notificationSettings);
+      await API.post('/settings/notifications', notificationSettings, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch (error) {
-      console.error("Error saving notification settings:", error.message || error);
+      console.error('Error saving notification settings:', error?.response?.data || error.message || error);
     }
   };
 
   // Save location settings to backend
   const saveLocationSettings = async (enabled, location) => {
     try {
+      const token = user?.token || (await AsyncStorage.getItem('token'));
+      if (!token) return;
+
       const locationSettings = {
-        userId: user?._id || user?.id || 'current_user_id',
         locationEnabled: enabled,
         location: location
           ? {
@@ -173,55 +181,56 @@ const SettingScreen = () => {
           : null,
       };
 
-      await API.post('/settings/location', locationSettings);
+      await API.post('/settings/location', locationSettings, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch (error) {
-      console.error("Error saving location settings:", error.message || error);
+      console.error('Error saving location settings:', error?.response?.data || error.message || error);
     }
   };
 
   // Load settings from backend
   const loadSettings = async () => {
     try {
-      const res = await API.get(`/settings/${user?._id || user?.id || 'current_user_id'}`);
+      const token = user?.token || (await AsyncStorage.getItem('token'));
+      if (!token) return;
+      const res = await API.get(`/settings/me`, { headers: { Authorization: `Bearer ${token}` } });
       const settings = res.data;
       if (settings) {
         if (settings.notifications) {
-          setGeofenceEnter(settings.notifications.geofenceEnter || false);
-          setGeofenceExit(settings.notifications.geofenceExit || false);
-          setNewPersonAdded(settings.notifications.newPersonAdded || false);
-          setPersonLeft(settings.notifications.personLeft || false);
-          setTaskAssigned(settings.notifications.taskAssigned || false);
-          setTaskAccepted(settings.notifications.taskAccepted || false);
-          setTaskDenied(settings.notifications.taskDenied || false);
+          setGeofenceEnter(!!settings.notifications.geofenceEnter);
+          setGeofenceExit(!!settings.notifications.geofenceExit);
+          setNewPersonAdded(!!settings.notifications.newPersonAdded);
+          setPersonLeft(!!settings.notifications.personLeft);
+          setTaskAssigned(!!settings.notifications.taskAssigned);
+          setTaskAccepted(!!settings.notifications.taskAccepted);
+          setTaskDenied(!!settings.notifications.taskDenied);
         }
-        if (settings.locationEnabled !== undefined)
-          setIsLocationEnabled(settings.locationEnabled);
+        if (settings.locationEnabled !== undefined) setIsLocationEnabled(!!settings.locationEnabled);
       }
     } catch (error) {
-      console.error("Error loading settings:", error.message || error);
+      console.error('Error loading settings:', error?.response?.data || error.message || error);
     }
   };
 
   const handleNotificationToggle = (setter, currentValue) => {
     const newValue = !currentValue;
     setter(newValue);
-    setTimeout(() => saveNotificationSettings(), 100);
+    // save immediately
+    saveNotificationSettings();
   };
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      async (nextState) => {
-        if (nextState === "active") {
-          let { status } = await Location.getForegroundPermissionsAsync();
-          setIsLocationEnabled(status === "granted");
-        }
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'active') {
+        let { status } = await Location.getForegroundPermissionsAsync();
+        setIsLocationEnabled(status === 'granted');
       }
-    );
+    });
 
     loadSettings();
     return () => subscription?.remove();
-  }, []);
+  }, [user]);
 
   return (
     <View

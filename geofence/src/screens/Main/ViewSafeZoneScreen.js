@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function ViewSafeZoneScreen({ route, navigation }) {
   const cameraRef = useRef(null);
   const safeZone = route.params?.safeZone;
+  // console.log("Viewing Safe Zone:", safeZone);
 
   if (!safeZone) {
     return (

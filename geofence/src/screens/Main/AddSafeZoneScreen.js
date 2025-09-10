@@ -26,17 +26,17 @@ export default function AddSafeZoneScreen({ navigation, route }) {
     if (!mapLocation || !radius || !name) 
       return Alert.alert("Error", "Select location, radius, and name");
 
-    addSafeZone({ coordinates: mapLocation, radius: parseFloat(radius), name });
+    addSafeZone({ coordinates: mapLocation, radius: parseFloat(radius), name:name });
 
     // Emit to backend so other circle members get new zone
-    fetch("https://7c92e792db0f.ngrok-free.app/api/circles/add-safezone", {
+    fetch("https://5a97881c2fbc.ngrok-free.app/api/circles/add-safezone", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         circleId: user.circle,
         coordinates: mapLocation,
         radius: parseFloat(radius),
-        name, // ✅ send name to backend
+        name,
       }),
     });
 

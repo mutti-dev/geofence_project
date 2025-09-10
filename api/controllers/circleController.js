@@ -1,6 +1,9 @@
 import Circle from "../models/Circle.js";
 import User from "../models/User.js";
 import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
+import Notification from "../models/Notification.js";
+import { sendPush } from "../utils/sendPush.js";
 
 // Generate random invite code
 const generateCode = () => crypto.randomBytes(3).toString("hex").toUpperCase();
@@ -32,6 +35,22 @@ export const createCircle = async (req, res) => {
   }
 };
 
+// @desc Generate a share code valid for 24 hours
+export const generateShareCode = async (req, res, next) => {
+  try {
+    const adminId = req.user.id;
+    const circle = await Circle.findOne({ admin: adminId });
+    if (!circle) return res.status(404).json({ message: "Circle not found" });
+    const code = uuidv4().split("-")[0];
+    circle.shareCode = code;
+    circle.codeExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await circle.save();
+    return res.json({ shareCode: code, expiresAt: circle.codeExpiresAt });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @desc Join circle using invite code
 export const joinCircle = async (req, res) => {
   try {
@@ -56,6 +75,39 @@ export const joinCircle = async (req, res) => {
   }
 };
 
+// @desc Join a circle by share code
+export const joinByCode = async (req, res, next) => {
+  try {
+    const { code } = req.body;
+    const userId = req.user.id;
+    const circle = await Circle.findOne({ shareCode: code });
+    if (!circle) return res.status(404).json({ message: "Invalid code" });
+    if (circle.codeExpiresAt < new Date())
+      return res.status(400).json({ message: "Code expired" });
+    if (circle.members.includes(userId))
+      return res.status(400).json({ message: "Already a member" });
+    circle.members.push(userId);
+    await circle.save();
+
+    // Notify admin
+    const admin = await User.findById(circle.admin);
+    if (admin) {
+      const notification = await Notification.create({
+        user: admin._id,
+        title: "New member joined",
+        message: `${req.user.name} joined your circle`,
+      });
+      // send push if token exists
+      if (admin.pushToken)
+        sendPush(admin.pushToken, notification.title, notification.message);
+    }
+
+    return res.json({ message: "Joined circle", circleId: circle._id });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @desc Get current user's circle and members
 export const getMyCircle = async (req, res) => {
   try {
@@ -74,6 +126,18 @@ export const getMyCircle = async (req, res) => {
     res.json(circle);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc Get all circles with members populated
+export const getCirclesWithMembers = async (req, res, next) => {
+  try {
+    const circles = await Circle.find()
+      .populate("admin", "name email")
+      .populate("members", "name email location avatar");
+    return res.json(circles);
+  } catch (err) {
+    next(err);
   }
 };
 

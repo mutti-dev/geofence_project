@@ -9,11 +9,12 @@ import axios from "axios";
 
 
 const API = axios.create({
-  baseURL: "https://7c92e792db0f.ngrok-free.app/api", // Use your local machine IP if using a device
+  baseURL: "https://5a97881c2fbc.ngrok-free.app/api", // Use your local machine IP if using a device
   headers: {
     "Content-Type": "application/json",
   },
 });
+
 
 // Add token interceptor
 API.interceptors.request.use(async (config) => {
@@ -21,5 +22,7 @@ API.interceptors.request.use(async (config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+
 
 export default API;

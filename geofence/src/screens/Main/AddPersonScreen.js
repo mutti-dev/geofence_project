@@ -20,11 +20,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const AddPersonScreen = () => {
   const { currentTheme } = useContext(ThemeContext);
   const { user, logout } = useContext(AuthContext);
-  console.log("user", user);
 
+  console.log("user", user);
   const [generatedCode, setGeneratedCode] = useState("");
   const [members, setMembers] = useState([]);
-  console.log("members", members);
+
   const [joinCode, setJoinCode] = useState("");
   const [invite, setInvite] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,17 +70,46 @@ const AddPersonScreen = () => {
       if (isRefresh) setIsRefreshing(true);
       else setIsLoading(true);
 
-      // const token = await AsyncStorage.getItem("token");
-      if (!user.token) {
+      const token = user?.token || (await AsyncStorage.getItem("token"));
+      if (!token) {
         Alert.alert("Error", "You are not logged in");
         return;
       }
-      const { data } = await API.get("/users/circle-members", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setMembers(data || []);
+
+      // Prefer circles endpoint to get members for the user's circle
+      try {
+        const { data: circles } = await API.get("/circles/all", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const myCircle = (circles || []).find(
+          (c) =>
+            String(c._id) === String(user?.circle) ||
+            String(c.admin) === String(user?._id)
+        );
+        if (myCircle) {
+          setMembers(myCircle.members || []);
+          return;
+        }
+      } catch (err) {
+        console.log(
+          "circles/all failed, will try users/circle-members fallback",
+          err?.response?.data || err.message
+        );
+      }
+
+      // Fallback to older endpoint if available
+      try {
+        const { data } = await API.get("/users/circle-members", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMembers(data || []);
+      } catch (error) {
+        console.log(
+          "Error fetching members (fallback):",
+          error?.response?.data || error.message
+        );
+        setMembers([]);
+      }
     } catch (error) {
       console.log("Error fetching members:", error);
       Alert.alert("Error", "Failed to fetch members");
@@ -98,99 +127,30 @@ const AddPersonScreen = () => {
     fetchMembers(true);
   };
 
-  // Generate code
-  // const handleGenerateCode = async () => {
-  //   try {
-  //     setIsGenerating(true);
-  //     // Get token from storage
-  //     const token = await AsyncStorage.getItem("token");
-  //     if (!token) {
-  //       Alert.alert("Error", "You are not logged in");
-  //       return;
-  //     }
-
-  //     // Send request with Authorization header
-  //     const { data } = await API.post(
-  //       "/members/generate-code",
-  //       {}, // empty body
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       }
-  //     );
-
-  //     setGeneratedCode(data.code);
-
-  //     Alert.alert(
-  //       "Code Generated",
-  //       `Share this code with the member: ${data.code}`
-  //     );
-  //   } catch (error) {
-  //     console.log(
-  //       "Error generating code:",
-  //       error.response?.data || error.message
-  //     );
-  //     Alert.alert(
-  //       "Error",
-  //       error.response?.data?.message || "Failed to generate code"
-  //     );
-  //   } finally {
-  //     setIsGenerating(false);
-  //   }
-  // };
-
-  // Join member using code
-  // const handleJoinMember = async () => {
-  //   if (!joinCode.trim()) {
-  //     return Alert.alert("Error", "Please enter a code");
-  //   }
-
-  //   try {
-  //     setIsLoading(true);
-  //     // Get token from storage
-  //     const token = await AsyncStorage.getItem("token");
-  //     if (!token) {
-  //       return Alert.alert("Error", "You are not logged in");
-  //     }
-
-  //     // Send request with Authorization header
-  //     const { data } = await API.post(
-  //       "/members/join",
-  //       { code: joinCode },
-  //       {
-  //         headers: { Authorization: `Bearer ${token}` },
-  //       }
-  //     );
-
-  //     if (data.success) {
-  //       Alert.alert("Success", `${data.member.name} added successfully`);
-  //       fetchMembers(); // Refresh members list
-  //       setJoinCode("");
-  //     } else {
-  //       Alert.alert("Error", data.message || "Failed to join member");
-  //     }
-  //   } catch (error) {
-  //     console.log(
-  //       "Error joining member:",
-  //       error.response?.data || error.message
-  //     );
-  //     Alert.alert(
-  //       "Error",
-  //       error.response?.data?.message || "Invalid code or member already exists"
-  //     );
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   // Request invite code
   const handleGenerate = async () => {
-    if (!user.token || !user.circle) return Alert.alert("Error", "You must be in a circle");
+    if (!user.token || !user.circle)
+      return Alert.alert("Error", "You must be in a circle");
     try {
+      const token = user?.token || (await AsyncStorage.getItem("token"));
+      if (!token) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
       setIsGenerating(true);
-      const res = await API.post(`/circles/${user.circle}/generate-invite`);
-      setInvite(res.data.invite);
+      
+
+      const { data } = await API.post(
+        `/circles/${user.circle}/generate-invite`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Generated invite", data);
+      setInvite(data.invite);
       Alert.alert("Success", "Invite code generated successfully!");
     } catch (err) {
       console.log(err.response?.data || err.message);
@@ -212,38 +172,50 @@ const AddPersonScreen = () => {
   );
 
   const renderMemberItem = ({ item, index }) => (
-    <View style={[
-      styles.memberCard, 
-      { 
-        backgroundColor: colors.cardBg,
-        shadowColor: colors.shadow,
-      }
-    ]}>
+    <View
+      style={[
+        styles.memberCard,
+        {
+          backgroundColor: colors.cardBg,
+          shadowColor: colors.shadow,
+        },
+      ]}
+    >
       <View style={styles.memberHeader}>
-        <View style={[
-          styles.memberAvatar,
-          { backgroundColor: item.role === 'admin' ? colors.warning : colors.button1 }
-        ]}>
+        <View
+          style={[
+            styles.memberAvatar,
+            {
+              backgroundColor:
+                item.role === "admin" ? colors.warning : colors.button1,
+            },
+          ]}
+        >
           <Text style={styles.memberInitial}>{item.name[0]}</Text>
         </View>
-        
+
         <View style={styles.memberInfo}>
           <Text style={[styles.memberName, { color: colors.text }]}>
             {item.name}
           </Text>
           <View style={styles.roleContainer}>
-            <View style={[
-              styles.roleBadge,
-              { backgroundColor: item.role === 'admin' ? colors.warning : colors.success }
-            ]}>
+            <View
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor:
+                    item.role === "admin" ? colors.warning : colors.success,
+                },
+              ]}
+            >
               <Text style={styles.roleText}>
-                {item.role === 'admin' ? '👑 Admin' : '👤 Member'}
+                {item.role === "admin" ? "👑 Admin" : "👤 Member"}
               </Text>
             </View>
           </View>
         </View>
       </View>
-      
+
       <View style={styles.memberStats}>
         <Text style={[styles.memberDetail, { color: colors.text }]}>
           Joined: {new Date().toLocaleDateString()}
@@ -266,14 +238,14 @@ const AddPersonScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar 
-        barStyle={currentTheme === "dark" ? "light-content" : "dark-content"} 
-        backgroundColor={colors.background} 
+      <StatusBar
+        barStyle={currentTheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
       />
-      
+
       {renderHeader()}
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -285,7 +257,6 @@ const AddPersonScreen = () => {
           />
         }
       >
-        
         {/* COMMENTED STYLED CODE - Generate Code Section */}
         {/* <View style={[styles.section, { backgroundColor: colors.cardBg }]}>
           <View style={styles.sectionHeader}>
@@ -381,7 +352,8 @@ const AddPersonScreen = () => {
               👨‍👩‍👧‍👦 Family Members
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.text }]}>
-              {members.length} {members.length === 1 ? 'member' : 'members'} in your circle
+              {members.length} {members.length === 1 ? "member" : "members"} in
+              your circle
             </Text>
           </View>
 
@@ -418,9 +390,9 @@ const AddPersonScreen = () => {
 
           <TouchableOpacity
             style={[
-              styles.primaryButton, 
+              styles.primaryButton,
               { backgroundColor: colors.success },
-              isGenerating && styles.buttonDisabled
+              isGenerating && styles.buttonDisabled,
             ]}
             onPress={handleGenerate}
             disabled={isGenerating}
@@ -433,7 +405,12 @@ const AddPersonScreen = () => {
           </TouchableOpacity>
 
           {invite && (
-            <View style={[styles.inviteContainer, { backgroundColor: colors.accent }]}>
+            <View
+              style={[
+                styles.inviteContainer,
+                { backgroundColor: colors.accent },
+              ]}
+            >
               <View style={styles.inviteHeader}>
                 <Text style={[styles.inviteLabel, { color: colors.text }]}>
                   Active Invite Code
@@ -478,19 +455,19 @@ const AddPersonScreen = () => {
 export default AddPersonScreen;
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
+  container: {
+    flex: 1,
   },
   header: {
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   headerSubtitle: {
@@ -518,7 +495,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   sectionSubtitle: {
@@ -529,8 +506,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -543,9 +520,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inputContainer: {
     marginBottom: 16,
@@ -560,22 +537,22 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   codeLabel: {
     fontSize: 14,
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   codeText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     letterSpacing: 2,
     marginBottom: 8,
   },
   codeHint: {
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
     opacity: 0.8,
   },
   memberCard: {
@@ -590,33 +567,33 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   memberHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   memberAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   memberInitial: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   memberInfo: {
     flex: 1,
   },
   memberName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   roleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   roleBadge: {
     paddingHorizontal: 8,
@@ -624,9 +601,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   roleText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   memberStats: {
     marginTop: 8,
@@ -642,7 +619,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 40,
   },
   loadingText: {
@@ -650,7 +627,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 40,
   },
   emptyIcon: {
@@ -659,13 +636,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
   inviteContainer: {
@@ -678,11 +655,11 @@ const styles = StyleSheet.create({
   },
   inviteLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   inviteCode: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -694,17 +671,17 @@ const styles = StyleSheet.create({
   inviteHint: {
     fontSize: 12,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   logoutButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

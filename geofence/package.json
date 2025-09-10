@@ -18,6 +18,8 @@
     "@reduxjs/toolkit": "^2.9.0",
     "axios": "^1.11.0",
     "expo": "~53.0.22",
+    "expo-constants": "^17.1.7",
+    "expo-linear-gradient": "~14.1.5",
     "expo-location": "~18.1.6",
     "expo-notifications": "~0.31.4",
     "expo-status-bar": "~2.2.3",
@@ -32,8 +34,7 @@
     "react-native-screens": "~4.11.1",
     "react-redux": "^9.2.0",
     "socket.io-client": "^4.8.1",
-    "uuid": "^13.0.0",
-    "expo-linear-gradient": "~14.1.5"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

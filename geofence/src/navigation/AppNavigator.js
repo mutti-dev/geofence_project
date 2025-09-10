@@ -9,7 +9,7 @@ import AddPersonScreen from "../screens/Main/AddPersonScreen";
 import AddSafeZoneScreen from "../screens/Main/AddSafeZoneScreen";
 import ViewSafeZoneScreen from "../screens/Main/ViewSafeZoneScreen";
 import MapScreen from "../screens/Main/MapScreen";
-
+import AssignTaskScreen from "../screens/Main/AssignTaskScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -31,6 +31,7 @@ const AppNavigator = () => {
         <Stack.Screen name="ViewSafeZone" component={ViewSafeZoneScreen} />
         <Stack.Screen name="AddSafeZoneScreen" component={AddSafeZoneScreen} />
         <Stack.Screen name="MapScreen" component={MapScreen} />
+        <Stack.Screen name="AssignTask" component={AssignTaskScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
