@@ -15,21 +15,32 @@ import {
 import API from "../../api";
 import { ThemeContext } from "../../contexts/ThemeContext";
 import { AuthContext } from "../../contexts/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const AddPersonScreen = () => {
   const { currentTheme } = useContext(ThemeContext);
   const { user, logout } = useContext(AuthContext);
+  console.log("user", user);  
 
-  console.log("user", user);
   const [generatedCode, setGeneratedCode] = useState("");
   const [members, setMembers] = useState([]);
 
   const [joinCode, setJoinCode] = useState("");
   const [invite, setInvite] = useState(null);
+  console.log("invite", invite);
+  const [expiresAt, setExpiresAt] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const token = user?.token || "";
+  if (!token) {
+    setIsLoading(false);
+    setIsRefreshing(false);
+    Alert.alert("Error", "You are not logged in");
+    return;
+  }
 
   const colors =
     currentTheme === "dark"
@@ -65,57 +76,23 @@ const AddPersonScreen = () => {
         };
 
   // Fetch members
-  const fetchMembers = async (isRefresh = false) => {
+  const fetchMembers = async () => {
+    setIsLoading(true);
     try {
-      if (isRefresh) setIsRefreshing(true);
-      else setIsLoading(true);
-
       const token = user?.token || (await AsyncStorage.getItem("token"));
-      if (!token) {
-        Alert.alert("Error", "You are not logged in");
-        return;
-      }
+      if (!token) return Alert.alert("Error", "Not authenticated");
 
-      // Prefer circles endpoint to get members for the user's circle
-      try {
-        const { data: circles } = await API.get("/circles/all", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const myCircle = (circles || []).find(
-          (c) =>
-            String(c._id) === String(user?.circle) ||
-            String(c.admin) === String(user?._id)
-        );
-        if (myCircle) {
-          setMembers(myCircle.members || []);
-          return;
-        }
-      } catch (err) {
-        console.log(
-          "circles/all failed, will try users/circle-members fallback",
-          err?.response?.data || err.message
-        );
-      }
+      const { data } = await API.get("/circles/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      // Fallback to older endpoint if available
-      try {
-        const { data } = await API.get("/users/circle-members", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMembers(data || []);
-      } catch (error) {
-        console.log(
-          "Error fetching members (fallback):",
-          error?.response?.data || error.message
-        );
-        setMembers([]);
-      }
-    } catch (error) {
-      console.log("Error fetching members:", error);
-      Alert.alert("Error", "Failed to fetch members");
+      console.log("Fetched members:", data);
+      setMembers(data || []);
+    } catch (err) {
+      console.log("fetchMembers error", err?.response?.data || err.message);
+      Alert.alert("Error", "Unable to load members");
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   };
 
@@ -129,35 +106,33 @@ const AddPersonScreen = () => {
 
   // Request invite code
   const handleGenerate = async () => {
-    if (!user.token || !user.circle)
-      return Alert.alert("Error", "You must be in a circle");
     try {
-      const token = user?.token || (await AsyncStorage.getItem("token"));
-      if (!token) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-        Alert.alert("Error", "You are not logged in");
-        return;
-      }
-
       setIsGenerating(true);
-      
 
       const { data } = await API.post(
-        `/circles/${user.circle}/generate-invite`,
+        `/circles/${user.circle}/generate-invite`, // URL
+        {}, // body payload (empty object if no body)
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      console.log("Generated invite", data);
-      setInvite(data.invite);
-      Alert.alert("Success", "Invite code generated successfully!");
+
+      const code = data.invite.code;
+      const expiresAt = data.invite.expiresAt;
+      setInvite(code);
+      setExpiresAt(expiresAt);
+      Alert.alert("Success", `Invite code generated: ${code}`);
     } catch (err) {
       console.log(err.response?.data || err.message);
       Alert.alert("Error", "Unable to generate invite");
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleCopyCode = async () => {
+    await Clipboard.setStringAsync(invite);
+    Alert.alert("Copied", "Invite code copied to clipboard!");
   };
 
   const renderHeader = () => (
@@ -416,11 +391,37 @@ const AddPersonScreen = () => {
                   Active Invite Code
                 </Text>
               </View>
-              <Text style={[styles.inviteCode, { color: colors.success }]}>
-                {invite.code}
-              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 8,
+                }}
+              >
+                <Text
+                  style={[
+                    styles.inviteCode,
+                    { color: colors.success, flex: 1 },
+                  ]}
+                >
+                  {invite}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={handleCopyCode}
+                  style={{ marginLeft: 8 }}
+                >
+                  <MaterialIcons
+                    name="content-copy"
+                    size={24}
+                    color={colors.text}
+                  />
+                </TouchableOpacity>
+              </View>
+
               <Text style={[styles.inviteExpiry, { color: colors.text }]}>
-                Expires: {new Date(invite.expiresAt).toLocaleString()}
+                Expires: {new Date(expiresAt).toLocaleString()}
               </Text>
               <Text style={[styles.inviteHint, { color: colors.text }]}>
                 Share this code with people you want to invite to your circle
@@ -428,25 +429,6 @@ const AddPersonScreen = () => {
             </View>
           )}
         </View>
-
-        {/* Logout Section */}
-        {/* <View style={[styles.section, { backgroundColor: colors.cardBg }]}>
-          <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.button2 }]}
-            onPress={() => {
-              Alert.alert(
-                "Sign Out",
-                "Are you sure you want to sign out?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Sign Out", onPress: logout, style: "destructive" },
-                ]
-              );
-            }}
-          >
-            <Text style={styles.logoutButtonText}>🚪 Sign Out</Text>
-          </TouchableOpacity>
-        </View> */}
       </ScrollView>
     </View>
   );

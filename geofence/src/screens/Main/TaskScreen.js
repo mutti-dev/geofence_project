@@ -17,15 +17,13 @@ import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SOCKET_URL = "https://5a97881c2fbc.ngrok-free.app";
-
 const TaskScreen = () => {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
+
   const navigation = useNavigation();
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
 
   const fetchTasks = async (isRefresh = false) => {
     try {
@@ -47,7 +45,19 @@ const TaskScreen = () => {
 
       setTasks(data || []);
     } catch (error) {
-      console.log("Error fetching tasks:", error?.response?.data || error.message);
+      console.log(
+        "Error fetching tasks:",
+        error?.response?.data || error.message
+      );
+      
+      // Handle authentication errors
+      if (error?.response?.status === 401) {
+        Alert.alert("Session Expired", "Please log in again", [
+          { text: "OK", onPress: () => logout() }
+        ]);
+        return;
+      }
+      
       Alert.alert("Error", "Failed to fetch tasks. Please try again.");
       setTasks([]);
     } finally {
@@ -59,14 +69,26 @@ const TaskScreen = () => {
   const handleAccept = async (taskId) => {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
-      await API.post(
-        `/tasks/${taskId}/accept`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!token) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
+      await API.post(`/tasks/${taskId}/accept`);
+
       fetchTasks();
       Alert.alert("Success", "Task accepted successfully!");
     } catch (error) {
+      console.log("accept error", error?.response?.data || error.message);
+      
+      // Handle authentication errors
+      if (error?.response?.status === 401) {
+        Alert.alert("Session Expired", "Please log in again", [
+          { text: "OK", onPress: () => logout() }
+        ]);
+        return;
+      }
+      
       Alert.alert("Error", "Failed to accept task");
     }
   };
@@ -74,14 +96,25 @@ const TaskScreen = () => {
   const handleDecline = async (taskId) => {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
-      await API.post(
-        `/tasks/${taskId}/decline`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!token) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
+      await API.post(`/tasks/${taskId}/decline`);
       fetchTasks();
       Alert.alert("Success", "Task declined successfully!");
     } catch (error) {
+      console.log("decline error", error?.response?.data || error.message);
+      
+      // Handle authentication errors
+      if (error?.response?.status === 401) {
+        Alert.alert("Session Expired", "Please log in again", [
+          { text: "OK", onPress: () => logout() }
+        ]);
+        return;
+      }
+      
       Alert.alert("Error", "Failed to decline task");
     }
   };
@@ -89,13 +122,25 @@ const TaskScreen = () => {
   const handleDelete = async (taskId) => {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
-      await API.delete(`/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (!token) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
+      await API.delete(`/tasks/${taskId}`);
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
       Alert.alert("Success", "Task deleted");
     } catch (err) {
       console.log("delete error", err?.response?.data || err.message);
+      
+      // Handle authentication errors
+      if (err?.response?.status === 401) {
+        Alert.alert("Session Expired", "Please log in again", [
+          { text: "OK", onPress: () => logout() }
+        ]);
+        return;
+      }
+      
       Alert.alert("Error", "Failed to delete task");
     }
   };
@@ -122,29 +167,6 @@ const TaskScreen = () => {
 
   useEffect(() => {
     fetchTasks();
-
-    // 🔹 Socket for real-time updates
-    const socket = io(SOCKET_URL);
-
-    socket.on("connect", () => {
-      setSocketConnected(true);
-      console.log("Socket connected");
-    });
-
-    socket.on("disconnect", () => {
-      setSocketConnected(false);
-      console.log("Socket disconnected");
-    });
-
-    socket.on("taskAssigned", (newTask) => {
-      setTasks((prev) => [newTask, ...prev]);
-      Alert.alert("New Task", `You have been assigned: ${newTask.title}`);
-    });
-
-    return () => {
-      socket.disconnect();
-      setSocketConnected(false);
-    };
   }, []);
 
   const renderEmptyState = () => (
@@ -155,7 +177,10 @@ const TaskScreen = () => {
         You're all caught up! New tasks will appear here when they're assigned
         to you.
       </Text>
-      <TouchableOpacity style={styles.refreshButton} onPress={() => fetchTasks()}>
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={() => fetchTasks()}
+      >
         <Text style={styles.refreshButtonText}>Refresh</Text>
       </TouchableOpacity>
     </View>
@@ -177,22 +202,13 @@ const TaskScreen = () => {
           {user?.role === "admin" ? "in circle" : "pending"}
         </Text>
       </View>
-      <View style={styles.statusContainer}>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: socketConnected ? "#27ae60" : "#e74c3c" },
-          ]}
-        />
-        <Text style={styles.statusText}>
-          {socketConnected ? "Connected" : "Offline"}
-        </Text>
-      </View>
     </View>
   );
 
   const renderTaskItem = ({ item, index }) => (
-    <View style={[styles.taskItemContainer, { marginTop: index === 0 ? 0 : 12 }]}>
+    <View
+      style={[styles.taskItemContainer, { marginTop: index === 0 ? 0 : 12 }]}
+    >
       <TaskCard
         task={item}
         onAccept={handleAccept}
@@ -204,19 +220,34 @@ const TaskScreen = () => {
 
       {user?.role === "admin" && (
         <View style={styles.adminActionRow}>
-          <TouchableOpacity style={styles.adminActionBtn} onPress={() => handleUpdateStatus(item._id, 'pending')}>
+          <TouchableOpacity
+            style={styles.adminActionBtn}
+            onPress={() => handleUpdateStatus(item._id, "pending")}
+          >
             <Text style={styles.adminActionText}>Pending</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.adminActionBtn} onPress={() => handleUpdateStatus(item._id, 'accepted')}>
+          <TouchableOpacity
+            style={styles.adminActionBtn}
+            onPress={() => handleUpdateStatus(item._id, "accepted")}
+          >
             <Text style={styles.adminActionText}>Accept</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.adminActionBtn} onPress={() => handleUpdateStatus(item._id, 'declined')}>
+          <TouchableOpacity
+            style={styles.adminActionBtn}
+            onPress={() => handleUpdateStatus(item._id, "declined")}
+          >
             <Text style={styles.adminActionText}>Decline</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.adminActionBtn} onPress={() => handleUpdateStatus(item._id, 'completed')}>
+          <TouchableOpacity
+            style={styles.adminActionBtn}
+            onPress={() => handleUpdateStatus(item._id, "completed")}
+          >
             <Text style={styles.adminActionText}>Complete</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.adminDeleteBtn} onPress={() => handleDelete(item._id)}>
+          <TouchableOpacity
+            style={styles.adminDeleteBtn}
+            onPress={() => handleDelete(item._id)}
+          >
             <Text style={styles.adminDeleteText}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -279,7 +310,6 @@ const TaskScreen = () => {
 };
 
 export default TaskScreen;
-
 
 const styles = StyleSheet.create({
   container: {

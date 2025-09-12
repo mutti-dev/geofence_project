@@ -3,6 +3,7 @@ import Circle from "../models/Circle.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import { sendPush } from "../utils/sendPush.js";
+import { createNotification } from "./notificationController.js";
 
 // utility to expire tasks past deadline
 const expireTasksIfNeeded = async () => {
@@ -18,23 +19,24 @@ export const createTask = async (req, res, next) => {
     const { assignedTo, description, deadline } = req.body;
     const userId = req.user.id;
 
-    // find user circle
+    // Find user's circle
     const circle = await Circle.findOne({ members: userId });
     if (!circle) {
       return res.status(400).json({ message: "You are not in a circle" });
     }
 
-    // check if assignedTo user is in same circle
+    // Check if assignedTo user is in the same circle
     if (!circle.members.map((m) => m.toString()).includes(assignedTo)) {
       return res.status(400).json({ message: "User not in your circle" });
     }
 
-    // only admin can create (must be circle admin)
+    // Only admin can create tasks
     const adminCircle = await Circle.findOne({ admin: userId });
     if (!adminCircle) {
       return res.status(403).json({ message: "Only admins can create tasks" });
     }
 
+    // Create task
     const task = await Task.create({
       circleId: circle._id,
       assignedBy: userId,
@@ -44,21 +46,16 @@ export const createTask = async (req, res, next) => {
       status: "pending",
     });
 
-    // notify assignee
+    // Notify assignee in real-time
     const assigneeUser = await User.findById(assignedTo);
     if (assigneeUser) {
-      const notification = await Notification.create({
-        user: assigneeUser._id,
-        title: "New Task Assigned",
-        message: description,
-        type: "taskAssigned",
-      });
-      if (assigneeUser.pushToken)
-        await sendPush(
-          assigneeUser.pushToken,
-          notification.title,
-          notification.message
-        );
+      const io = req.app.get("io"); // get socket.io instance
+      await createNotification(
+        assignedTo,
+        "taskAssigned",
+        `${description}`,
+        io
+      );
     }
 
     res.status(201).json({ message: "Task assigned", task });
@@ -149,13 +146,14 @@ export const getCircleTasks = async (req, res, next) => {
 export const deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
+
     const userId = req.user.id;
     const task = await Task.findById(id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     // allow deletion if user created the task
     if (String(task.assignedBy) === String(userId)) {
-      task.isDeleted == true;
+      task.isDeleted = true;
       await task.save();
       return res.json({ message: "Deleted" });
     }
@@ -180,14 +178,24 @@ export const acceptTask = async (req, res, next) => {
   try {
     const taskId = req.params.id;
     const userId = req.user.id;
+    console.log("Accepting task", taskId, "by user", userId);
+
     const task = await Task.findById(taskId);
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    if (task.isDeleted)
+      return res.status(400).json({ message: "Task has been deleted" });
+
     if (String(task.assignedTo) !== String(userId))
       return res.status(403).json({ message: "Not authorized" });
+
     if (task.status === "expired")
       return res.status(400).json({ message: "Task is expired" });
+
     task.status = "accepted";
     await task.save();
+
+    // Notify creator
     const creator = await User.findById(task.assignedBy);
     if (creator) {
       const notification = await Notification.create({
@@ -196,13 +204,20 @@ export const acceptTask = async (req, res, next) => {
         message: `${task.description} - accepted`,
         type: "taskAccepted",
       });
-      if (creator.pushToken)
-        await sendPush(
-          creator.pushToken,
-          notification.title,
-          notification.message
-        );
+
+      if (creator.pushToken) {
+        try {
+          await sendPush(
+            creator.pushToken,
+            notification.title,
+            notification.message
+          );
+        } catch (err) {
+          console.error("Push notification failed", err);
+        }
+      }
     }
+
     return res.json({ message: "Task accepted", task });
   } catch (err) {
     next(err);

@@ -1,13 +1,14 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerApi, loginApi } from "../api/authApi";
-import { registerForPushNotificationsAsync } from "../utils/notificationHelper";
+
 
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  console.log("user", user);
   const [loading, setLoading] = useState(true);
 
   const register = async ({
@@ -42,24 +43,40 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await loginApi(email, password);
     if (res.token) {
+      await AsyncStorage.setItem("token", res.token);
       await AsyncStorage.setItem("user", JSON.stringify(res));
       setUser(res);
-      registerForPushNotificationsAsync();
+
     }
     return res;
   };
 
   const logout = async () => {
     await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
     setUser(null);
   };
 
   const loadUser = async () => {
-    const token = await AsyncStorage.getItem("token");
-    if (token) {
-      setUser({ token }); // optionally fetch full profile
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const userData = await AsyncStorage.getItem("user");
+      
+      if (token && userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } else if (token) {
+        // If we have token but no user data, set minimal user object
+        setUser({ token });
+      }
+    } catch (error) {
+      console.log("Error loading user:", error);
+      // Clear corrupted data
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -67,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, register, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, register, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

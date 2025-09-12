@@ -8,37 +8,37 @@ import {
   Alert,
   ScrollView,
   SafeAreaView,
+  Button,
 } from "react-native";
 import * as Location from "expo-location";
 import { useIsFocused } from "@react-navigation/native";
 import MapView, { Marker, Circle } from "react-native-maps";
 import io from "socket.io-client";
 import { AuthContext } from "../../contexts/AuthContext";
+import { useSocket } from "../../contexts/SocketContext";
+import { joinCircle } from "../../sockets/circleSocket";
+import { updateLocation } from "../../sockets/locationSocket";
 
 export default function MainScreen({ navigation }) {
   const [location, setLocation] = useState(null);
   const [safeZones, setSafeZones] = useState([]);
-  console.log("SafeZones:", safeZones);
+
   const [members, setMembers] = useState([]); // Track circle members
   const isFocused = useIsFocused();
-  const socket = useRef(null);
-  const { user } = useContext(AuthContext);
 
-  // console.log("MainScreen user:", user);
+  const { user } = useContext(AuthContext);
+  const { socket, notifications } = useSocket();
 
   const USER_ID = user._id; // replace with real user ID
   const CIRCLE_ID = user.circle; // replace with user's circle ID
-  const SERVER_URL = "https://5a97881c2fbc.ngrok-free.app"; // backend
 
   // Initialize Socket.IO
   useEffect(() => {
-    socket.current = io(SERVER_URL);
-
     // Join circle room
-    socket.current.emit("joinCircle", { circleId: CIRCLE_ID });
+    socket.emit("joinCircle", { circleId: CIRCLE_ID });
 
     // Listen for location updates of members
-    socket.current.on("locationUpdate", (member) => {
+    socket.on("locationUpdate", (member) => {
       setMembers((prev) => {
         const index = prev.findIndex((m) => m._id === member._id);
         if (index >= 0) {
@@ -51,11 +51,11 @@ export default function MainScreen({ navigation }) {
     });
 
     // Listen for geofence notifications
-    socket.current.on("geofenceNotification", (data) => {
+    socket.on("geofenceNotification", (data) => {
       Alert.alert(data.message);
     });
 
-    return () => socket.current.disconnect();
+    return () => socket.disconnect();
   }, []);
 
   // Send user location to server every 5 sec
@@ -178,11 +178,12 @@ export default function MainScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        
         {/* Header Section */}
         <View style={styles.header}>
           <Text style={styles.title}>Location Tracker</Text>
-          <Text style={styles.subtitle}>Your current position and safe zones</Text>
+          <Text style={styles.subtitle}>
+            Your current position and safe zones
+          </Text>
         </View>
 
         {/* Current Location Card */}
@@ -223,12 +224,16 @@ export default function MainScreen({ navigation }) {
 
         {/* Safe Zones Section */}
         <View style={styles.safeZonesSection}>
-          <Text style={styles.sectionTitle}>🛡️ Safe Zones ({safeZones.length})</Text>
-          
+          <Text style={styles.sectionTitle}>
+            🛡️ Safe Zones ({safeZones.length})
+          </Text>
+
           {safeZones.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>No safe zones added yet</Text>
-              <Text style={styles.emptyStateSubText}>Tap the button above to create your first safe zone</Text>
+              <Text style={styles.emptyStateSubText}>
+                Tap the button above to create your first safe zone
+              </Text>
             </View>
           ) : (
             <FlatList
@@ -248,23 +253,30 @@ export default function MainScreen({ navigation }) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.zoneHeader}>
-                    <Text style={styles.zoneName}>{item.name || "Safe Zone"}</Text>
-                    <View style={[
-                      styles.statusBadge, 
-                      item.safe ? styles.statusSafe : styles.statusUnsafe
-                    ]}>
+                    <Text style={styles.zoneName}>
+                      {item.name || "Safe Zone"}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        item.safe ? styles.statusSafe : styles.statusUnsafe,
+                      ]}
+                    >
                       <Text style={styles.statusText}>
                         {item.safe ? "SAFE" : "OUTSIDE"}
                       </Text>
                     </View>
                   </View>
-                  
+
                   <View style={styles.zoneDetails}>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Location:</Text>
                       <Text style={styles.detailValue}>
-                        {item.coordinates?.latitude != null && item.coordinates?.longitude != null
-                          ? `${item.coordinates.latitude.toFixed(3)}, ${item.coordinates.longitude.toFixed(3)}`
+                        {item.coordinates?.latitude != null &&
+                        item.coordinates?.longitude != null
+                          ? `${item.coordinates.latitude.toFixed(
+                              3
+                            )}, ${item.coordinates.longitude.toFixed(3)}`
                           : "N/A"}
                       </Text>
                     </View>
@@ -277,11 +289,17 @@ export default function MainScreen({ navigation }) {
                   </View>
 
                   <View style={styles.statusRow}>
-                    <Text style={[
-                      styles.statusIndicator,
-                      item.safe ? styles.statusTextSafe : styles.statusTextUnsafe
-                    ]}>
-                      {item.safe ? "✅ Inside Safe Zone" : "⚠️ Outside Safe Zone"}
+                    <Text
+                      style={[
+                        styles.statusIndicator,
+                        item.safe
+                          ? styles.statusTextSafe
+                          : styles.statusTextUnsafe,
+                      ]}
+                    >
+                      {item.safe
+                        ? "✅ Inside Safe Zone"
+                        : "⚠️ Outside Safe Zone"}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -331,7 +349,6 @@ export default function MainScreen({ navigation }) {
             </View>
           )}
         </View>
-        
       </ScrollView>
     </SafeAreaView>
   );
@@ -345,7 +362,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  
+
   // Header Styles
   header: {
     backgroundColor: "#ffffff",
@@ -495,7 +512,7 @@ const styles = StyleSheet.create({
     color: "#2c3e50",
     flex: 1,
   },
-  
+
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,

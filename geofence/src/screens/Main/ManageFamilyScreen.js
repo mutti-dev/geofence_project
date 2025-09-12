@@ -10,13 +10,43 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import API from "../../api";
+import ScreenWrapper from "../../components/ScreenWrapper";
+import { useSocket } from "../../contexts/SocketContext";
 
 const ManageFamilyScreen = () => {
   const { user } = useContext(AuthContext);
   const [members, setMembers] = useState([]);
+  console.log("Members:", members);
   const [invite, setInvite] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { socket, notifications, onlineUsers } = useSocket();
+  const [onlineMembers, setOnlineMembers] = useState([]);
+
+  // useEffect(() => {
+  //   // Join circle room
+  //   socket.current.emit("joinCircle", { circleId: CIRCLE_ID });
+
+  //   // Listen for location updates of members
+  //   socket.current.on("locationUpdate", (member) => {
+  //     setMembers((prev) => {
+  //       const index = prev.findIndex((m) => m._id === member._id);
+  //       if (index >= 0) {
+  //         prev[index] = member;
+  //       } else {
+  //         prev.push(member);
+  //       }
+  //       return [...prev];
+  //     });
+  //   });
+
+  //   // Listen for geofence notifications
+  //   socket.current.on("geofenceNotification", (data) => {
+  //     Alert.alert(data.message);
+  //   });
+
+  //   return () => socket.current.disconnect();
+  // }, []);
 
   const fetchMembers = async (isRefresh = false) => {
     try {
@@ -80,21 +110,6 @@ const ManageFamilyScreen = () => {
     fetchMembers(true);
   };
 
-  const handleGenerateInvite = async () => {
-    if (!user?.circle) {
-      Alert.alert("Error", "No circle found");
-      return;
-    }
-    try {
-      const res = await API.post(`/circles/${user.circle}/generate-invite`);
-      setInvite(res.data.invite);
-      Alert.alert("Invite", `Code: ${res.data.invite.code}`);
-    } catch (err) {
-      console.log("Generate invite error", err.response?.data || err.message);
-      Alert.alert("Error", "Failed to generate invite");
-    }
-  };
-
   const handleRemove = async (memberId) => {
     try {
       await API.delete(`/circles/${user.circle}/members/${memberId}`);
@@ -106,41 +121,35 @@ const ManageFamilyScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Manage Family</Text>
-        <TouchableOpacity
-          style={styles.generate}
-          onPress={handleGenerateInvite}
-        >
-          <Text style={styles.generateText}>Generate Invite</Text>
-        </TouchableOpacity>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        <FlatList
+          data={members}
+          keyExtractor={(i) => i._id}
+          renderItem={({ item }) => {
+            const isOnline = onlineUsers?.includes(item._id);
+
+            return (
+              <View style={styles.item}>
+                <Text style={styles.name}>
+                  {item.name} {item.role === "admin" ? "(Admin)" : ""}
+                </Text>
+                {isOnline ? (
+                  <Text style={styles.online}>Online</Text>
+                ) : (
+                  <Text style={styles.offline}>Offline</Text>
+                )}
+              </View>
+            );
+          }}
+          ListEmptyComponent={() => (
+            <Text style={styles.empty}>No members</Text>
+          )}
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+        />
       </View>
-      <FlatList
-        data={members}
-        keyExtractor={(i) => i._id}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>
-              {item.name} {item.role === "admin" ? "(Admin)" : ""}
-            </Text>
-            {user._id === item._id ? null : (
-              <TouchableOpacity
-                onPress={() => handleRemove(item._id)}
-                style={styles.remove}
-              >
-                <Text style={styles.removeText}>Remove</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-        ListEmptyComponent={() => (
-          <Text style={{ padding: 20 }}>No members</Text>
-        )}
-        refreshing={isRefreshing}
-        onRefresh={onRefresh}
-      />
-    </View>
+    </ScreenWrapper>
   );
 };
 
@@ -168,4 +177,14 @@ const styles = StyleSheet.create({
   name: { fontSize: 16 },
   remove: { padding: 8, backgroundColor: "#ff7f50", borderRadius: 6 },
   removeText: { color: "#fff" },
+  online: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "green",
+  },
+  offline: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "red",
+  },
 });

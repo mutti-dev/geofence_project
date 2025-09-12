@@ -32,23 +32,13 @@ export default function AssignTaskScreen({ navigation }) {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
       if (!token) return Alert.alert("Error", "Not authenticated");
-      const { data: circles } = await API.get("/circles/all", {
+
+      const { data } = await API.get("/circles/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const myCircle = (circles || []).find(
-        (c) =>
-          String(c._id) === String(user?.circle) ||
-          String(c.admin) === String(user?._id)
-      );
-      if (myCircle) {
-        setMembers(myCircle.members || []);
-      } else {
-        // fallback
-        const { data } = await API.get("/users/circle-members", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMembers(data || []);
-      }
+
+      console.log("Fetched members:", data);
+      setMembers(data || []);
     } catch (err) {
       console.log("fetchMembers error", err?.response?.data || err.message);
       Alert.alert("Error", "Unable to load members");
@@ -113,7 +103,7 @@ export default function AssignTaskScreen({ navigation }) {
           <ActivityIndicator />
         ) : (
           <FlatList
-            data={members}
+            data={members.filter((member) => member.role === "member")}
             keyExtractor={(i) => i._id}
             renderItem={renderMember}
             horizontal

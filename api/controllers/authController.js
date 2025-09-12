@@ -9,6 +9,7 @@ const generateToken = (id) => {
 };
 
 // @desc Register User
+// controllers/auth.js (updated)
 export const registerUser = async (req, res) => {
   console.log(req.body);
   try {
@@ -36,57 +37,85 @@ export const registerUser = async (req, res) => {
 
     let circle = null;
 
+    // ADMIN: create circle
     if (role === "admin") {
-      if (!circleName)
-        return res.status(400).json({ message: "Circle name required for admin" });
-
-      // Ensure unique circle name to avoid duplicate key errors (if a unique index exists)
-      let baseName = String(circleName).trim();
-      let uniqueName = baseName;
-      let attempts = 0;
-      while (await Circle.findOne({ name: uniqueName })) {
-        attempts += 1;
-        uniqueName = `${baseName}-${Math.floor(1000 + Math.random() * 9000)}`;
-        if (attempts > 5) break;
+      if (!circleName) {
+        // cleanup user if we can't proceed
+        await User.findByIdAndDelete(user._id);
+        return res
+          .status(400)
+          .json({ message: "Circle name required for admin" });
       }
 
-      // try creating circle, retry once with random suffix if duplicate key occurs
       try {
-        circle = new Circle({ name: uniqueName, admin: user._id, members: [user._id] });
+        // Try to create the circle with the provided name (allow same names at DB level)
+        circle = new Circle({
+          name: circleName,
+          admin: user._id,
+          members: [user._id],
+        });
         await circle.save();
       } catch (createErr) {
-        // if duplicate key, attempt a fallback name and retry
+        // If we hit a duplicate key error and you haven't dropped the unique index yet,
+        // fallback to creating a unique internal slug while keeping the displayed name same.
         if (createErr.code === 11000) {
-          const fallbackName = `${baseName}-${Date.now().toString().slice(-4)}`;
           try {
-            circle = new Circle({ name: fallbackName, admin: user._id, members: [user._id] });
+            const slug = `${circleName}-${Date.now()
+              .toString()
+              .slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+            circle = new Circle({
+              name: circleName,
+              slug,
+              admin: user._id,
+              members: [user._id],
+            });
             await circle.save();
           } catch (retryErr) {
-            console.error('Circle creation failed after retry', retryErr);
-            return res.status(500).json({ message: 'Failed to create circle' });
+            // cleanup user and fail
+            await User.findByIdAndDelete(user._id);
+            console.error("Circle creation failed after retry", retryErr);
+            return res.status(500).json({ message: "Failed to create circle" });
           }
         } else {
-          console.error('Circle creation error', createErr);
-          return res.status(500).json({ message: 'Failed to create circle' });
+          await User.findByIdAndDelete(user._id);
+          console.error("Circle creation error", createErr);
+          return res.status(500).json({ message: "Failed to create circle" });
         }
       }
 
       user.circle = circle._id;
       await user.save();
+
+      // MEMBER: join circle using invite code (atomic update)
     } else if (role === "member") {
-      if (!inviteCode)
-        return res.status(400).json({ message: "Invite code required for member" });
-      // find valid invite
-      const found = await Circle.findOne({ "invite.code": inviteCode });
-      if (!found)
-        return res.status(400).json({ message: "Invalid or expired invite code" });
-      if (!found.invite || new Date(found.invite.expiresAt) < new Date())
-        return res.status(400).json({ message: "Invite expired" });
-      // add member
-      found.members.push(user._id);
-      // optionally clear invite after use
-      found.invite = null;
-      await found.save();
+      if (!inviteCode) {
+        await User.findByIdAndDelete(user._id);
+        return res
+          .status(400)
+          .json({ message: "Invite code required for member" });
+      }
+
+      // Find and atomically push member and clear invite in a single operation (prevents race)
+      const now = new Date();
+      const found = await Circle.findOneAndUpdate(
+        {
+          "invite.code": inviteCode,
+          "invite.expiresAt": { $gt: now }, // invite still valid
+        },
+        {
+          $push: { members: user._id },
+          $unset: { invite: "" },
+        },
+        { new: true }
+      );
+
+      if (!found) {
+        await User.findByIdAndDelete(user._id);
+        return res
+          .status(400)
+          .json({ message: "Invalid or expired invite code" });
+      }
+
       user.circle = found._id;
       await user.save();
       circle = found;
@@ -99,6 +128,10 @@ export const registerUser = async (req, res) => {
     return res.status(201).json({ user: userObj, circle });
   } catch (error) {
     console.error(error);
+    // If we had created a user but something failed after, try to cleanup (best-effort)
+    if (error && error._id) {
+      // no-op here, but you can attempt cleanup if necessary
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -108,8 +141,9 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // check user
-    const user = await User.findOne({ email });
+    // check user and populate circle
+    const user = await User.findOne({ email }).populate("circle", "name");
+
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         _id: user.id,
@@ -117,8 +151,11 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         token: generateToken(user.id),
-        circle: user.circle || null,
+        circle: user.circle ? user.circle.name : null, // return circle name
         location: user.location || null,
+        profilePicture: user.profilePicture || null,
+        settings: user.settings || null,
+        address: user.address || null,
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });

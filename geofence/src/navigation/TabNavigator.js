@@ -6,9 +6,11 @@ import AddPersonScreen from "../screens/Main/AddPersonScreen";
 import { MaterialIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { ThemeContext } from "../contexts/ThemeContext";
 import { AuthContext } from "../contexts/AuthContext";
-import ManageFamilyScreen from "../screens/Settings/ManageFamilyScreen";
+import ManageFamilyScreen from "../screens/Main/ManageFamilyScreen";
 import GeofenceScreen from "../screens/Main/GeofenceScreen";
-  
+import GeofenceManagementScreen from "../screens/Main/GeofenceManagementScreen";
+import LiveMapScreen from "../screens/Main/LiveMapScreen";
+import NotificationScreen from "../screens/Main/NotificationScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -19,47 +21,109 @@ const TabNavigator = () => {
   const inactiveColor = (colors && colors.accent) || "#ff7f50";
 
   return (
-   <Tab.Navigator
-  initialRouteName="Map"
-  screenOptions={({ route }) => ({
-    headerShown: false,
-    tabBarActiveTintColor: activeColor,
-    tabBarInactiveTintColor: inactiveColor,
-    tabBarStyle: { height: 60, paddingBottom: 6 },
-    tabBarIcon: ({ color, size }) => {
-      if (route.name === "Map")
-        return <MaterialIcons name="map" size={size} color={color} />;
-      if (route.name === "Tasks")
-        return <Ionicons name="clipboard-outline" size={size} color={color} />;
-      if (route.name === "Geofence")
-        return <FontAwesome5 name="map-marker-alt" size={size} color={color} />;
-      if (route.name === "AddPerson")
-        return <MaterialIcons name="person-add" size={size} color={color} />;
-      if (route.name === "ManageFamily")
-        return <Ionicons name="people-outline" size={size} color={color} />;
-      return null;
-    },
-  })}
->
-  {/* Map Tab */}
-  <Tab.Screen name="Map" component={MainScreen} />
+    <Tab.Navigator
+      initialRouteName="Map"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
+        tabBarStyle: { height: 60, paddingBottom: 6 },
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === "Map")
+            return <MaterialIcons name="map" size={size} color={color} />;
+          if (route.name === "Tasks")
+            return (
+              <Ionicons name="clipboard-outline" size={size} color={color} />
+            );
+          if (route.name === "GeofenceManagement")
+            return (
+              <FontAwesome5 name="draw-polygon" size={size} color={color} />
+            );
+          if (route.name === "Geofence")
+            return (
+              <FontAwesome5 name="map-marker-alt" size={size} color={color} />
+            );
+          if (route.name === "LiveMap")
+            return (
+              <MaterialIcons name="my-location" size={size} color={color} />
+            );
+          if (route.name === "Notifications")
+            return (
+              <Ionicons
+                name="notifications-outline"
+                size={size}
+                color={color}
+              />
+            );
+          if (route.name === "AddPerson")
+            return (
+              <MaterialIcons name="person-add" size={size} color={color} />
+            );
+          if (route.name === "ManageFamily")
+            return <Ionicons name="people-outline" size={size} color={color} />;
+          return null;
+        },
+      })}
+    >
+      {/* Map Tab */}
+      <Tab.Screen name="Map" component={MainScreen} />
 
-  {/* Tasks Tab */}
-  <Tab.Screen name="Tasks" component={TaskScreen} />
+      {/* Tasks Tab */}
+      <Tab.Screen name="Tasks" component={TaskScreen} />
 
-  {/* Geofence Tab (Admin sees all, Members see read-only) */}
-  <Tab.Screen name="Geofence" component={GeofenceScreen} />
+      {/* Geofence/Geofence Management Tab */}
+      {user?.role === "admin" ? (
+        <Tab.Screen
+          name="Notifications"
+          component={NotificationScreen}
+          options={{ title: "Notifications" }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Geofence"
+          component={GeofenceScreen}
+          options={{ title: "Geofences" }}
+        />
+      )}
+      <Tab.Screen
+        name="Geofence"
+        component={GeofenceScreen}
+        options={{ title: "Geofences" }}
+      />
 
-  {/* Add Person (Admin Only) */}
-  {user?.role === "admin" && (
-    <Tab.Screen name="AddPerson" component={AddPersonScreen} options={{ title: "Add Person" }} />
-  )}
+      {/* Live Map Tab (all users) */}
+      <Tab.Screen
+        name="LiveMap"
+        component={LiveMapScreen}
+        options={{ title: "Live Map" }}
+      />
 
-  {/* Manage Family */}
-  <Tab.Screen name="ManageFamily" component={ManageFamilyScreen} options={{ title: "Family" }} />
-</Tab.Navigator>
+      {/* Add Person (Admin Only) */}
+      {user?.role === "admin" && (
+        <Tab.Screen
+          name="AddPerson"
+          component={AddPersonScreen}
+          options={{ title: "Add Person" }}
+        />
+      )}
 
+      {/* Manage Family */}
+      <Tab.Screen
+        name="ManageFamily"
+        component={ManageFamilyScreen}
+        options={{ title: "Family" }}
+      />
+    </Tab.Navigator>
   );
 };
 
 export default TabNavigator;
+
+
+
+
+{/* <Tab.Screen
+name="GeofenceManagement"
+component={GeofenceManagementScreen}
+options={{ title: "Geofences" }}
+/> */}

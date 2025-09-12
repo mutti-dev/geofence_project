@@ -12,17 +12,48 @@ import {
   StatusBar
 } from "react-native";
 import { AuthContext } from "../../contexts/AuthContext";
+import { validateEmail, validatePassword } from "../../utils/validation";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const { login } = useContext(AuthContext);
 
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    setEmailError("");
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    setPasswordError("");
+  };
+
   const handleLogin = async () => {
-    // Validation
+    // Clear previous errors
+    setEmailError("");
+    setPasswordError("");
+
+    // Basic validation
     if (!email.trim() || !password.trim()) {
       Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    // Email validation
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.message);
+      return;
+    }
+
+    // Password validation
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.message);
       return;
     }
 
@@ -51,10 +82,7 @@ const LoginScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f8f8" />
       
-      <KeyboardAvoidingView 
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      
         <ScrollView 
           contentContainerStyle={styles.scrollContainer} 
           showsVerticalScrollIndicator={false}
@@ -74,13 +102,14 @@ const LoginScreen = ({ navigation }) => {
               <TextInput 
                 placeholder="Email" 
                 value={email} 
-                onChangeText={setEmail} 
+                onChangeText={handleEmailChange} 
                 keyboardType="email-address" 
-                style={styles.input}
+                style={[styles.input, emailError && styles.inputError]}
                 placeholderTextColor="#aaa"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
+              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
             </View>
 
             {/* Password Input */}
@@ -88,11 +117,12 @@ const LoginScreen = ({ navigation }) => {
               <TextInput 
                 placeholder="Password" 
                 value={password} 
-                onChangeText={setPassword} 
+                onChangeText={handlePasswordChange} 
                 secureTextEntry 
-                style={styles.input}
+                style={[styles.input, passwordError && styles.inputError]}
                 placeholderTextColor="#aaa"
               />
+              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
             </View>
 
             {/* Login Button */}
@@ -110,9 +140,9 @@ const LoginScreen = ({ navigation }) => {
             {/* Links Container */}
             <View style={styles.linksContainer}>
               {/* Forgot Password Link */}
-              <TouchableOpacity style={styles.linkButton}>
+              {/* <TouchableOpacity style={styles.linkButton}>
                 <Text style={styles.linkText}>Forgot Password?</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               {/* Register Link */}
               <TouchableOpacity 
@@ -127,7 +157,7 @@ const LoginScreen = ({ navigation }) => {
 
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+ 
     </View>
   );
 };
@@ -221,5 +251,15 @@ const styles = StyleSheet.create({
   linkHighlight: {
     color: '#008080',
     fontWeight: '600',
+  },
+  inputError: {
+    borderColor: '#ff4444',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

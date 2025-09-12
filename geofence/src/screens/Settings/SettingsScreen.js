@@ -19,7 +19,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import * as Location from "expo-location";
 import API from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SettingScreen = () => {
   const themeContext = useContext(ThemeContext);
@@ -139,11 +139,10 @@ const SettingScreen = () => {
   // Save notification settings to backend
   const saveNotificationSettings = async () => {
     try {
-      const token = user?.token || (await AsyncStorage.getItem('token'));
+      const token = user?.token || (await AsyncStorage.getItem("token"));
       if (!token) return;
 
       const notificationSettings = {
-        // only send notifications object; server should infer user from token
         notifications: {
           geofenceEnter,
           geofenceExit,
@@ -156,18 +155,23 @@ const SettingScreen = () => {
         theme: currentTheme,
       };
 
-      await API.post('/settings/notifications', notificationSettings, {
-        headers: { Authorization: `Bearer ${token}` },
+      await API.put("/users/settings", notificationSettings, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
       });
     } catch (error) {
-      console.error('Error saving notification settings:', error?.response?.data || error.message || error);
+      console.error(
+        "Error saving notification settings:",
+        error?.response?.data || error.message || error
+      );
     }
   };
 
   // Save location settings to backend
   const saveLocationSettings = async (enabled, location) => {
     try {
-      const token = user?.token || (await AsyncStorage.getItem('token'));
+      const token = user?.token || (await AsyncStorage.getItem("token"));
       if (!token) return;
 
       const locationSettings = {
@@ -181,20 +185,21 @@ const SettingScreen = () => {
           : null,
       };
 
-      await API.post('/settings/location', locationSettings, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await API.put("/users/settings", locationSettings);
     } catch (error) {
-      console.error('Error saving location settings:', error?.response?.data || error.message || error);
+      console.error(
+        "Error saving location settings:",
+        error?.response?.data || error.message || error
+      );
     }
   };
 
   // Load settings from backend
   const loadSettings = async () => {
     try {
-      const token = user?.token || (await AsyncStorage.getItem('token'));
+      const token = user?.token || (await AsyncStorage.getItem("token"));
       if (!token) return;
-      const res = await API.get(`/settings/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await API.get(`/users/settings`);
       const settings = res.data;
       if (settings) {
         if (settings.notifications) {
@@ -206,10 +211,14 @@ const SettingScreen = () => {
           setTaskAccepted(!!settings.notifications.taskAccepted);
           setTaskDenied(!!settings.notifications.taskDenied);
         }
-        if (settings.locationEnabled !== undefined) setIsLocationEnabled(!!settings.locationEnabled);
+        if (settings.locationEnabled !== undefined)
+          setIsLocationEnabled(!!settings.locationEnabled);
       }
     } catch (error) {
-      console.error('Error loading settings:', error?.response?.data || error.message || error);
+      console.error(
+        "Error loading settings:",
+        error?.response?.data || error.message || error
+      );
     }
   };
 
@@ -221,12 +230,15 @@ const SettingScreen = () => {
   };
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextState) => {
-      if (nextState === 'active') {
-        let { status } = await Location.getForegroundPermissionsAsync();
-        setIsLocationEnabled(status === 'granted');
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextState) => {
+        if (nextState === "active") {
+          let { status } = await Location.getForegroundPermissionsAsync();
+          setIsLocationEnabled(status === "granted");
+        }
       }
-    });
+    );
 
     loadSettings();
     return () => subscription?.remove();
@@ -336,7 +348,7 @@ const SettingScreen = () => {
                 borderColor: colors.borderColor,
               },
             ]}
-            onPress={() => navigation.navigate('Home', { screen: 'AddPerson' })}
+            onPress={() => navigation.navigate("Home", { screen: "AddPerson" })}
           >
             <MaterialIcons name="people" size={24} color={colors.primary} />
             <Text style={[styles.privacyText, { color: colors.textColor }]}>

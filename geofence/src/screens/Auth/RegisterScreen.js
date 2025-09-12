@@ -12,6 +12,13 @@ import {
   StatusBar
 } from "react-native";
 import { AuthContext } from "../../contexts/AuthContext";
+import { 
+  validateEmail, 
+  validatePassword, 
+  validateName, 
+  validateCircleName, 
+  validateInviteCode 
+} from "../../utils/validation";
 
 const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState("");
@@ -20,25 +27,82 @@ const RegisterScreen = ({ navigation }) => {
   const [role, setRole] = useState("member"); // 'admin' or 'member'
   const [circleName, setCircleName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [circleNameError, setCircleNameError] = useState("");
+  const [inviteCodeError, setInviteCodeError] = useState("");
   const { register } = useContext(AuthContext);
+
+  const handleNameChange = (text) => {
+    setName(text);
+    setNameError("");
+  };
+
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    setEmailError("");
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    setPasswordError("");
+  };
+
+  const handleCircleNameChange = (text) => {
+    setCircleName(text);
+    setCircleNameError("");
+  };
+
+  const handleInviteCodeChange = (text) => {
+    setInviteCode(text);
+    setInviteCodeError("");
+  };
 
   const handleRegister = async () => {
     console.log("Button pressed with:", { name, email, password, role, circleName, inviteCode });
     
-    // Validation
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please fill in all required fields");
+    // Clear all errors
+    setNameError("");
+    setEmailError("");
+    setPasswordError("");
+    setCircleNameError("");
+    setInviteCodeError("");
+
+    // Validate name
+    const nameValidation = validateName(name);
+    if (!nameValidation.isValid) {
+      setNameError(nameValidation.message);
       return;
     }
-    
-    if (role === "admin" && !circleName.trim()) {
-      Alert.alert("Error", "Please enter a circle name");
+
+    // Validate email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.message);
       return;
     }
-    
-    if (role === "member" && !inviteCode.trim()) {
-      Alert.alert("Error", "Please enter an invite code");
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.message);
       return;
+    }
+
+    // Validate role-specific fields
+    if (role === "admin") {
+      const circleNameValidation = validateCircleName(circleName);
+      if (!circleNameValidation.isValid) {
+        setCircleNameError(circleNameValidation.message);
+        return;
+      }
+    } else {
+      const inviteCodeValidation = validateInviteCode(inviteCode);
+      if (!inviteCodeValidation.isValid) {
+        setInviteCodeError(inviteCodeValidation.message);
+        return;
+      }
     }
 
     // Build payload with role and relevant circle info
@@ -67,7 +131,7 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <View 
       style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
@@ -85,37 +149,40 @@ const RegisterScreen = ({ navigation }) => {
           {/* Username Input */}
           <View style={styles.inputGroup}>
             <TextInput 
-              placeholder="Username" 
+              placeholder="Username (letters and spaces only)" 
               value={name} 
-              onChangeText={setName} 
-              style={styles.input}
+              onChangeText={handleNameChange} 
+              style={[styles.input, nameError && styles.inputError]}
               placeholderTextColor="#999"
             />
+            {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
           </View>
 
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <TextInput 
-              placeholder="Email" 
+              placeholder="Email (must be @gmail.com)" 
               value={email} 
-              onChangeText={setEmail} 
+              onChangeText={handleEmailChange} 
               keyboardType="email-address" 
-              style={styles.input}
+              style={[styles.input, emailError && styles.inputError]}
               placeholderTextColor="#999"
               autoCapitalize="none"
             />
+            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
           </View>
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
             <TextInput 
-              placeholder="Password" 
+              placeholder="Password (min 8 chars, uppercase, lowercase, number, special char)" 
               value={password} 
-              onChangeText={setPassword} 
+              onChangeText={handlePasswordChange} 
               secureTextEntry 
-              style={styles.input}
+              style={[styles.input, passwordError && styles.inputError]}
               placeholderTextColor="#999"
             />
+            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
           </View>
 
           {/* Role Selection */}
@@ -152,23 +219,25 @@ const RegisterScreen = ({ navigation }) => {
           {role === "admin" ? (
             <View style={styles.inputGroup}>
               <TextInput 
-                placeholder="Enter Circle Name As Admin" 
+                placeholder="Enter Circle Name As Admin (min 3 chars)" 
                 value={circleName} 
-                onChangeText={setCircleName} 
-                style={styles.input}
+                onChangeText={handleCircleNameChange} 
+                style={[styles.input, circleNameError && styles.inputError]}
                 placeholderTextColor="#999"
               />
+              {circleNameError ? <Text style={styles.errorText}>{circleNameError}</Text> : null}
             </View>
           ) : (
             <View style={styles.inputGroup}>
               <TextInput 
-                placeholder="Enter invite code" 
+                placeholder="Enter invite code (min 6 chars)" 
                 value={inviteCode} 
-                onChangeText={setInviteCode} 
-                style={styles.input}
+                onChangeText={handleInviteCodeChange} 
+                style={[styles.input, inviteCodeError && styles.inputError]}
                 placeholderTextColor="#999"
                 autoCapitalize="characters"
               />
+              {inviteCodeError ? <Text style={styles.errorText}>{inviteCodeError}</Text> : null}
             </View>
           )}
 
@@ -188,7 +257,7 @@ const RegisterScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -310,5 +379,15 @@ const styles = StyleSheet.create({
   loginLinkHighlight: {
     color: '#2d9d91',
     fontWeight: '600',
+  },
+  inputError: {
+    borderColor: '#ff4444',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

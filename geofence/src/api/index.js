@@ -1,15 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { API_URL } from "../utils/constants";
 
-// import MapboxGL from "@maplibre/maplibre-react-native";
 
-// Agar tum dummy ya real token use karna chahte ho:
-// MapboxGL.setAccessToken("pk.test"); 
 
 
 
 const API = axios.create({
-  baseURL: "https://5a97881c2fbc.ngrok-free.app/api", // Use your local machine IP if using a device
+  baseURL: API_URL, // Use your local machine IP if using a device
   headers: {
     "Content-Type": "application/json",
   },

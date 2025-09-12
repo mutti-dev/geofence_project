@@ -5,29 +5,21 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   ScrollView, 
-  StatusBar 
+  StatusBar,
+  Image
 } from 'react-native';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
 const ProfileScreen = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       
-      {/* Header */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.menuButton}>
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerSpacer} />
-      </View> */}
+      
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         
@@ -47,9 +39,16 @@ const ProfileScreen = () => {
           
           <View style={styles.avatarContainer}>
             <View style={styles.avatarWrapper}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarInitial}>{user?.name?.[0]?.toUpperCase() || 'U'}</Text>
-              </View>
+              {user?.profilePicture?.url ? (
+                <Image 
+                  source={{ uri: user.profilePicture.url }} 
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarInitial}>{user?.name?.[0]?.toUpperCase() || 'U'}</Text>
+                </View>
+              )}
             </View>
           </View>
           
@@ -91,19 +90,24 @@ const ProfileScreen = () => {
               <View style={styles.fieldIcon}>
                 <Text style={styles.iconText}>📍</Text>
               </View>
-              <Text style={styles.fieldValue}>{user?.address || 'Add your address'}</Text>
+              <Text style={styles.fieldValue}>
+                {user?.address?.fullAddress || 
+                 (user?.address?.street && user?.address?.city ? 
+                  `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.country} ${user.address.postalCode}`.trim() : 
+                  'Add your address')}
+              </Text>
             </View>
           </View>
 
           {/* Circle/Family Info */}
-          {user?.circleName && (
+          {user?.circle && (
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Circle</Text>
+              <Text style={styles.fieldLabel}>Circle Name</Text>
               <View style={styles.fieldContainer}>
                 <View style={styles.fieldIcon}>
                   <Text style={styles.iconText}>👥</Text>
                 </View>
-                <Text style={styles.fieldValue}>{user.circleName}</Text>
+                <Text style={styles.fieldValue}>{user.circle}</Text>
               </View>
             </View>
           )}
@@ -256,6 +260,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d9d91',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#2d9d91',
   },
   avatarInitial: {
     color: '#ffffff',

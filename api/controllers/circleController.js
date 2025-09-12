@@ -1,4 +1,5 @@
 import Circle from "../models/Circle.js";
+import mongoose from "mongoose";
 import User from "../models/User.js";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
@@ -17,7 +18,9 @@ export const createCircle = async (req, res) => {
     // check if already in a circle
     const existing = await Circle.findOne({ members: userId });
     if (existing) {
-      return res.status(400).json({ message: "You already belong to a circle" });
+      return res
+        .status(400)
+        .json({ message: "You already belong to a circle" });
     }
 
     const circle = await Circle.create({
@@ -132,10 +135,19 @@ export const getMyCircle = async (req, res) => {
 // @desc Get all circles with members populated
 export const getCirclesWithMembers = async (req, res, next) => {
   try {
-    const circles = await Circle.find()
-      .populate("admin", "name email")
-      .populate("members", "name email location avatar");
-    return res.json(circles);
+    const userId = req.user.id;
+    
+
+    // Find the circle where the user is a member
+    const circle = await Circle.findOne({ members: userId })
+      .populate("members", "name email location role")
+      .populate("admin", "name email role");
+
+    if (!circle) {
+      return res.status(404).json({ message: "You are not in a circle" });
+    }
+
+    res.json(circle.members);
   } catch (err) {
     next(err);
   }
@@ -143,15 +155,26 @@ export const getCirclesWithMembers = async (req, res, next) => {
 
 // @desc Generate invite for circle
 export const generateInvite = async (req, res, next) => {
+  const id = req.params.id;
+  console.log("Generating invite for circle", id);
   try {
-    const circle = await Circle.findById(req.params.id);
+    // Validate id is a valid ObjectId
+    if (!id || id === "null" || id === "undefined" || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid circle id" });
+    }
+
+    const circle = await Circle.findById(id);
     if (!circle) return res.status(404).json({ message: "Circle not found" });
     if (circle.admin.toString() !== req.user.id)
       return res.status(403).json({ message: "Only admin can generate invite" });
 
-    const invite = generateCode(2);
-    circle.invite = { code: invite.code, expiresAt: invite.expiresAt };
+    // Generate code and expiry
+    const code = generateCode(); // string
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // valid for 24 hours
+
+    circle.invite = { code, expiresAt };
     await circle.save();
+
     res.json({ invite: circle.invite });
   } catch (err) {
     next(err);

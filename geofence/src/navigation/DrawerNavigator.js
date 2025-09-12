@@ -39,8 +39,8 @@ try {
 }
 try {
   ManageFamilyScreen =
-    require("../screens/Settings/ManageFamilyScreen").default ||
-    require("../screens/Settings/ManageFamilyScreen");
+    require("../screens/Main/ManageFamilyScreen").default ||
+    require("../screens/Main/ManageFamilyScreen");
 } catch (e) {
   ManageFamilyScreen = null;
 }

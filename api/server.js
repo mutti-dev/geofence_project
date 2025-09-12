@@ -1,20 +1,22 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import { createServer } from "http"; // ⬅️ http server wrapper
-import { Server } from "socket.io"; // ⬅️ socket.io
+import { createServer } from "http";
+import { Server } from "socket.io";
 import connectDB from "./config/db.js";
+
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import circleRoutes from "./routes/circleRoutes.js";
+import geofenceRoutes from "./routes/geofenceRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
 
-// socket.io config
-import socketHandler from "./sockets/socket.js";
+// Socket.io handlers
+import registerSockets from "./sockets/index.js";
 
 dotenv.config();
 const app = express();
@@ -31,6 +33,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/circles", circleRoutes);
+app.use("/api/geofences", geofenceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/members", memberRoutes);
 
@@ -42,26 +45,16 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// ⬇️ yahan se app.listen ki jagah server+socket
+// Create server + socket.io
 const server = createServer(app);
-
 const io = new Server(server, {
   cors: {
-    origin: "*", // frontend ka URL dalna best hoga
+    origin: "*", // TODO: set frontend URL for production
     methods: ["GET", "POST"],
   },
 });
 
-// ✅ Check socket.io is running
-io.on("connection", (socket) => {
-  console.log("🔌 Socket.io connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("❌ Socket.io disconnected:", socket.id);
-  });
-});
-
-// socket.js handler call
-socketHandler(io);
+// Register socket handlers
+registerSockets(io);
 
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

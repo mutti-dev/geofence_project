@@ -2,6 +2,13 @@
   "expo": {
     "name": "geofence",
     "slug": "geofence",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "splash": {
+      "image": "./src/assets/logo.png",
+      "resizeMode": "contain"             
+             
+    },
+    "assetBundlePatterns": ["**/*"]
   }
 }

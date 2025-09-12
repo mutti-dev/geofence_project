@@ -13,6 +13,7 @@ const CircleSchema = new mongoose.Schema(
     invite: InviteSchema,
     shareCode: { type: String },
     codeExpiresAt: { type: Date },
+    slug: { type: String, unique: true, sparse: true },
   },
   { timestamps: true }
 );

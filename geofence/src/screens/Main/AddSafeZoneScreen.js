@@ -12,6 +12,9 @@ import {
 import MapView, { Marker, Circle } from "react-native-maps";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../../contexts/AuthContext";
+import { API_URL } from "../../utils/constants";
+import API from "../../api";
+
 
 
 export default function AddSafeZoneScreen({ navigation, route }) {
@@ -29,16 +32,18 @@ export default function AddSafeZoneScreen({ navigation, route }) {
     addSafeZone({ coordinates: mapLocation, radius: parseFloat(radius), name:name });
 
     // Emit to backend so other circle members get new zone
-    fetch("https://5a97881c2fbc.ngrok-free.app/api/circles/add-safezone", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+   
+
+    const {data} = API.post(`/circles/add-safezone`,{
       body: JSON.stringify({
         circleId: user.circle,
         coordinates: mapLocation,
         radius: parseFloat(radius),
         name,
       }),
-    });
+    })
+
+    console.log("AddSafeScreen Data", data)
 
     navigation.goBack();
   };
