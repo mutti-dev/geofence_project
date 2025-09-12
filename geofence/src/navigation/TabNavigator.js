@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import MainScreen from "../screens/Main/MainScreen"; // Map screen
+import MainScreen from "../screens/Main/MainScreen";
 import TaskScreen from "../screens/Main/TaskScreen";
 import AddPersonScreen from "../screens/Main/AddPersonScreen";
 import { MaterialIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons";
@@ -8,7 +8,6 @@ import { ThemeContext } from "../contexts/ThemeContext";
 import { AuthContext } from "../contexts/AuthContext";
 import ManageFamilyScreen from "../screens/Main/ManageFamilyScreen";
 import GeofenceScreen from "../screens/Main/GeofenceScreen";
-import GeofenceManagementScreen from "../screens/Main/GeofenceManagementScreen";
 import LiveMapScreen from "../screens/Main/LiveMapScreen";
 import NotificationScreen from "../screens/Main/NotificationScreen";
 
@@ -17,8 +16,11 @@ const Tab = createBottomTabNavigator();
 const TabNavigator = () => {
   const { colors } = useContext(ThemeContext) || {};
   const { user } = useContext(AuthContext) || {};
-  const activeColor = (colors && colors.primary) || "#008080";
-  const inactiveColor = (colors && colors.accent) || "#ff7f50";
+
+  const activeColor = (colors && colors.accent) || "#008080";
+  const inactiveColor = (colors && colors.textSecondary) || "#666";
+  const backgroundColor = (colors && colors.surfaceColor) || "#fff";
+  const borderColor = (colors && colors.borderColor) || "#eee";
 
   return (
     <Tab.Navigator
@@ -27,51 +29,41 @@ const TabNavigator = () => {
         headerShown: false,
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: inactiveColor,
-        tabBarStyle: { height: 60, paddingBottom: 6 },
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 6,
+          backgroundColor,
+          borderTopColor: borderColor,
+        },
         tabBarIcon: ({ color, size }) => {
-          if (route.name === "Map")
-            return <MaterialIcons name="map" size={size} color={color} />;
-          if (route.name === "Tasks")
-            return (
-              <Ionicons name="clipboard-outline" size={size} color={color} />
-            );
-          if (route.name === "GeofenceManagement")
-            return (
-              <FontAwesome5 name="draw-polygon" size={size} color={color} />
-            );
-          if (route.name === "Geofence")
-            return (
-              <FontAwesome5 name="map-marker-alt" size={size} color={color} />
-            );
-          if (route.name === "LiveMap")
-            return (
-              <MaterialIcons name="my-location" size={size} color={color} />
-            );
-          if (route.name === "Notifications")
-            return (
-              <Ionicons
-                name="notifications-outline"
-                size={size}
-                color={color}
-              />
-            );
-          if (route.name === "AddPerson")
-            return (
-              <MaterialIcons name="person-add" size={size} color={color} />
-            );
-          if (route.name === "ManageFamily")
-            return <Ionicons name="people-outline" size={size} color={color} />;
-          return null;
+          switch (route.name) {
+            case "Map":
+              return <MaterialIcons name="map" size={size} color={color} />;
+            case "Tasks":
+              return <Ionicons name="clipboard-outline" size={size} color={color} />;
+            case "Geofence":
+              return <FontAwesome5 name="map-marker-alt" size={size} color={color} />;
+            case "LiveMap":
+              return <MaterialIcons name="my-location" size={size} color={color} />;
+            case "Notifications":
+              return <Ionicons name="notifications-outline" size={size} color={color} />;
+            case "AddPerson":
+              return <MaterialIcons name="person-add" size={size} color={color} />;
+            case "ManageFamily":
+              return <Ionicons name="people-outline" size={size} color={color} />;
+            default:
+              return null;
+          }
         },
       })}
     >
-      {/* Map Tab */}
+      {/* Map Tab (all users) */}
       <Tab.Screen name="Map" component={MainScreen} />
 
-      {/* Tasks Tab */}
+      {/* Tasks Tab (all users) */}
       <Tab.Screen name="Tasks" component={TaskScreen} />
 
-      {/* Geofence/Geofence Management Tab */}
+      {/* Geofence (Admin only) */}
       {user?.role === "admin" && (
         <Tab.Screen
           name="Geofence"
@@ -80,15 +72,15 @@ const TabNavigator = () => {
         />
       )}
 
-      {/* Live Map Tab (all users) */}
+      {/* Live Map (all users) */}
       <Tab.Screen
         name="LiveMap"
         component={LiveMapScreen}
         options={{ title: "Live Map" }}
       />
 
-      {/* Notifications Tab (all users) */}
-      {user.role === "admin" && (
+      {/* Notifications (Admin only) */}
+      {user?.role === "admin" && (
         <Tab.Screen
           name="Notifications"
           component={NotificationScreen}
@@ -96,7 +88,7 @@ const TabNavigator = () => {
         />
       )}
 
-      {/* Add Person (Admin Only) */}
+      {/* Add Person (Admin only) */}
       {user?.role === "admin" && (
         <Tab.Screen
           name="AddPerson"
@@ -105,7 +97,7 @@ const TabNavigator = () => {
         />
       )}
 
-      {/* Manage Family */}
+      {/* Manage Family (all users) */}
       <Tab.Screen
         name="ManageFamily"
         component={ManageFamilyScreen}

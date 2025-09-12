@@ -16,11 +16,13 @@ import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ThemeContext } from "../../contexts/ThemeContext";
 
 const TaskScreen = () => {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { colors } = useContext(ThemeContext);
 
   const navigation = useNavigation();
   const { user, logout } = useContext(AuthContext);
@@ -49,15 +51,15 @@ const TaskScreen = () => {
         "Error fetching tasks:",
         error?.response?.data || error.message
       );
-      
+
       // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
-          { text: "OK", onPress: () => logout() }
+          { text: "OK", onPress: () => logout() },
         ]);
         return;
       }
-      
+
       Alert.alert("Error", "Failed to fetch tasks. Please try again.");
       setTasks([]);
     } finally {
@@ -80,15 +82,15 @@ const TaskScreen = () => {
       Alert.alert("Success", "Task accepted successfully!");
     } catch (error) {
       console.log("accept error", error?.response?.data || error.message);
-      
+
       // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
-          { text: "OK", onPress: () => logout() }
+          { text: "OK", onPress: () => logout() },
         ]);
         return;
       }
-      
+
       Alert.alert("Error", "Failed to accept task");
     }
   };
@@ -106,15 +108,15 @@ const TaskScreen = () => {
       Alert.alert("Success", "Task declined successfully!");
     } catch (error) {
       console.log("decline error", error?.response?.data || error.message);
-      
+
       // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
-          { text: "OK", onPress: () => logout() }
+          { text: "OK", onPress: () => logout() },
         ]);
         return;
       }
-      
+
       Alert.alert("Error", "Failed to decline task");
     }
   };
@@ -132,15 +134,15 @@ const TaskScreen = () => {
       Alert.alert("Success", "Task deleted");
     } catch (err) {
       console.log("delete error", err?.response?.data || err.message);
-      
+
       // Handle authentication errors
       if (err?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
-          { text: "OK", onPress: () => logout() }
+          { text: "OK", onPress: () => logout() },
         ]);
         return;
       }
-      
+
       Alert.alert("Error", "Failed to delete task");
     }
   };
@@ -171,33 +173,51 @@ const TaskScreen = () => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📝</Text>
-      <Text style={styles.emptyTitle}>No Tasks Available</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyIcon, { color: colors.textSecondary }]}>
+        📝
+      </Text>
+      <Text style={[styles.emptyTitle, { color: colors.textColor }]}>
+        No Tasks Available
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         You're all caught up! New tasks will appear here when they're assigned
         to you.
       </Text>
       <TouchableOpacity
-        style={styles.refreshButton}
+        style={[styles.refreshButton, { backgroundColor: colors.primary }]}
         onPress={() => fetchTasks()}
       >
-        <Text style={styles.refreshButtonText}>Refresh</Text>
+        <Text style={[styles.refreshButtonText, { color: colors.textColor }]}>
+          Refresh
+        </Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderLoadingState = () => (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#008080" />
-      <Text style={styles.loadingText}>Loading your tasks...</Text>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+        Loading your tasks...
+      </Text>
     </View>
   );
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View
+      style={[
+        styles.header,
+        {
+          backgroundColor: colors.surfaceColor,
+          borderBottomColor: colors.borderColor,
+        },
+      ]}
+    >
       <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>My Tasks</Text>
-        <Text style={styles.headerSubtitle}>
+        <Text style={[styles.headerTitle, { color: colors.textColor }]}>
+          My Tasks
+        </Text>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
           {tasks.length} {tasks.length === 1 ? "task" : "tasks"}{" "}
           {user?.role === "admin" ? "in circle" : "pending"}
         </Text>
@@ -207,7 +227,10 @@ const TaskScreen = () => {
 
   const renderTaskItem = ({ item, index }) => (
     <View
-      style={[styles.taskItemContainer, { marginTop: index === 0 ? 0 : 12 }]}
+      style={[
+        styles.taskItemContainer,
+        { marginTop: index === 0 ? 0 : 12, backgroundColor: colors.cardColor },
+      ]}
     >
       <TaskCard
         task={item}
@@ -220,35 +243,29 @@ const TaskScreen = () => {
 
       {user?.role === "admin" && (
         <View style={styles.adminActionRow}>
+          {["pending", "accepted", "declined", "completed"].map((status) => (
+            <TouchableOpacity
+              key={status}
+              style={[
+                styles.adminActionBtn,
+                { backgroundColor: colors.surfaceColor },
+              ]}
+              onPress={() => handleUpdateStatus(item._id, status)}
+            >
+              <Text
+                style={[styles.adminActionText, { color: colors.textColor }]}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
           <TouchableOpacity
-            style={styles.adminActionBtn}
-            onPress={() => handleUpdateStatus(item._id, "pending")}
-          >
-            <Text style={styles.adminActionText}>Pending</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.adminActionBtn}
-            onPress={() => handleUpdateStatus(item._id, "accepted")}
-          >
-            <Text style={styles.adminActionText}>Accept</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.adminActionBtn}
-            onPress={() => handleUpdateStatus(item._id, "declined")}
-          >
-            <Text style={styles.adminActionText}>Decline</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.adminActionBtn}
-            onPress={() => handleUpdateStatus(item._id, "completed")}
-          >
-            <Text style={styles.adminActionText}>Complete</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.adminDeleteBtn}
+            style={[styles.adminDeleteBtn, { backgroundColor: colors.accent }]}
             onPress={() => handleDelete(item._id)}
           >
-            <Text style={styles.adminDeleteText}>Delete</Text>
+            <Text style={[styles.adminDeleteText, { color: colors.textColor }]}>
+              Delete
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -257,32 +274,52 @@ const TaskScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+      <View
+        style={[styles.container, { backgroundColor: colors.backgroundColor }]}
+      >
+        <StatusBar
+          barStyle={
+            colors.backgroundColor === "#121212"
+              ? "light-content"
+              : "dark-content"
+          }
+          backgroundColor={colors.backgroundColor}
+        />
         {renderLoadingState()}
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+    <View
+      style={[styles.container, { backgroundColor: colors.backgroundColor }]}
+    >
+      <StatusBar
+        barStyle={
+          colors.backgroundColor === "#121212"
+            ? "light-content"
+            : "dark-content"
+        }
+        backgroundColor={colors.backgroundColor}
+      />
 
       {renderHeader()}
 
       {user?.role === "admin" && (
         <TouchableOpacity
-          style={styles.assignButton}
+          style={[styles.assignButton, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate("AssignTask")}
         >
-          <Text style={styles.assignButtonText}>+ Assign Task</Text>
+          <Text style={[styles.assignButtonText, { color: colors.textColor }]}>
+            + Assign Task
+          </Text>
         </TouchableOpacity>
       )}
 
       <FlatList
         data={
           user?.role === "admin"
-            ? tasks // 🔹 admin sees all
+            ? tasks
             : tasks.filter((task) => task.status === "pending")
         }
         keyExtractor={(item) => item._id}
@@ -296,10 +333,10 @@ const TaskScreen = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={["#008080"]}
-            tintColor="#008080"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
             title="Pull to refresh"
-            titleColor="#666"
+            titleColor={colors.textSecondary}
           />
         }
         ListEmptyComponent={renderEmptyState}

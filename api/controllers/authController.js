@@ -151,7 +151,8 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         token: generateToken(user.id),
-        circle: user.circle ? user.circle.name : null, // return circle name
+        circleName: user.circle ? user.circle.name : null,
+        circle: user.circle ? user.circle.id : null,
         location: user.location || null,
         profilePicture: user.profilePicture || null,
         settings: user.settings || null,

@@ -60,9 +60,9 @@ const DrawerNavigator = () => {
     <Drawer.Navigator
       screenOptions={{
         headerShown: false,
-        drawerStyle: { backgroundColor: colors?.background },
-        drawerActiveTintColor: colors?.primary || "#008080",
-        drawerInactiveTintColor: colors?.text || "#000",
+        drawerStyle: { backgroundColor: colors?.backgroundColor },
+        drawerActiveTintColor: colors?.primary,
+        drawerInactiveTintColor: colors?.textColor,
       }}
     >
       <Drawer.Screen name="Home" component={TabNavigator} />

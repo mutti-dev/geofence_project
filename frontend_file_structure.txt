@@ -1,0 +1,67 @@
+src
+├── api
+│   ├── authApi.js
+│   ├── circleApi.js
+│   ├── geofenceApi.js
+│   ├── index.js
+│   ├── locationApi.js
+│   ├── memberApi.js
+│   └── taskApi.js
+├── assets
+│   ├── logo.png
+│   └── logo1.png
+├── components
+│   ├── CircleMember.js
+│   ├── MapMarker.js
+│   ├── ScreenWrapper.js
+│   ├── SettingButton.js
+│   └── TaskCard.js
+├── contexts
+│   ├── AuthContext.js
+│   ├── SocketContext.js
+│   └── ThemeContext.js
+├── navigation
+│   ├── AppNavigator.js
+│   ├── DrawerNavigator.js
+│   └── TabNavigator.js
+├── providers
+│   └── AppProviders.js
+├── screens
+│   ├── Auth
+│   │   ├── LoginScreen.js
+│   │   └── RegisterScreen.js
+│   ├── Main
+│   │   ├── AddPersonScreen.js
+│   │   ├── AddSafeZoneScreen.js
+│   │   ├── AssignTaskScreen.js
+│   │   ├── GeofenceManagementScreen.js
+│   │   ├── GeofenceScreen.js
+│   │   ├── LiveMapScreen.js
+│   │   ├── MainScreen.js
+│   │   ├── ManageFamilyScreen.js
+│   │   ├── MapScreen.js
+│   │   ├── NotificationScreen.js
+│   │   ├── TaskScreen.js
+│   │   └── ViewSafeZoneScreen.js
+│   └── Settings
+│       ├── ChangeCredentialsScreen.js
+│       ├── EditProfileScreen.js
+│       ├── ProfileScreen.js
+│       └── SettingsScreen.js
+├── services
+│   └── notifications
+│       └── PushNotificationService.js
+├── sockets
+│   ├── circleSocket.js
+│   ├── index.js
+│   ├── listeners.js
+│   ├── locationSocket.js
+│   └── notificationSocket.js
+├── store
+│   ├── authSlice.js
+│   ├── index.js
+│   └── taskSlice.js
+└── utils
+    ├── colors.js
+    ├── constants.js
+    └── validation.js

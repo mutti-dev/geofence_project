@@ -12,12 +12,12 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import { useIsFocused } from "@react-navigation/native";
-import MapView, { Marker, Circle } from "react-native-maps";
-import io from "socket.io-client";
+import MapView, { Marker } from "react-native-maps";
+
 import { AuthContext } from "../../contexts/AuthContext";
 import { useSocket } from "../../contexts/SocketContext";
-import { joinCircle } from "../../sockets/circleSocket";
-import { updateLocation } from "../../sockets/locationSocket";
+
+import { ThemeContext } from "../../contexts/ThemeContext";
 
 export default function MainScreen({ navigation }) {
   const [location, setLocation] = useState(null);
@@ -27,6 +27,7 @@ export default function MainScreen({ navigation }) {
   const isFocused = useIsFocused();
 
   const { user } = useContext(AuthContext);
+  const { colors } = useContext(ThemeContext) || {};
   const { socket, notifications } = useSocket();
 
   const USER_ID = user._id; // replace with real user ID
@@ -176,33 +177,63 @@ export default function MainScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors?.backgroundColor }]}
+    >
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Location Tracker</Text>
-          <Text style={styles.subtitle}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: colors?.cardColor,
+              borderBottomColor: colors?.borderColor,
+            },
+          ]}
+        >
+          <Text style={[styles.title, { color: colors?.textColor }]}>
+            Location Tracker
+          </Text>
+          <Text style={[styles.subtitle, { color: colors?.textSecondary }]}>
             Your current position and safe zones
           </Text>
         </View>
 
         {/* Current Location Card */}
-        <View style={styles.locationCard}>
+        <View
+          style={[
+            styles.locationCard,
+            {
+              backgroundColor: colors?.cardColor,
+              shadowColor: colors?.textColor,
+            },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>📍 Current Location</Text>
+            <Text style={[styles.cardTitle, { color: colors?.textColor }]}>
+              📍 Current Location
+            </Text>
           </View>
           <View style={styles.locationInfo}>
             <View style={styles.coordRow}>
-              <Text style={styles.coordLabel}>Latitude:</Text>
-              <Text style={styles.coordValue}>
+              <Text
+                style={[styles.coordLabel, { color: colors?.textSecondary }]}
+              >
+                Latitude:
+              </Text>
+              <Text style={[styles.coordValue, { color: colors?.textColor }]}>
                 {location?.coords?.latitude != null
                   ? location.coords.latitude.toFixed(5)
                   : "Loading..."}
               </Text>
             </View>
             <View style={styles.coordRow}>
-              <Text style={styles.coordLabel}>Longitude:</Text>
-              <Text style={styles.coordValue}>
+              <Text
+                style={[styles.coordLabel, { color: colors?.textSecondary }]}
+              >
+                Longitude:
+              </Text>
+              <Text style={[styles.coordValue, { color: colors?.textColor }]}>
                 {location?.coords?.longitude != null
                   ? location.coords.longitude.toFixed(5)
                   : "Loading..."}
@@ -213,25 +244,47 @@ export default function MainScreen({ navigation }) {
 
         {/* Add Safe Zone Button */}
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors?.accent }]}
           onPress={() =>
             navigation.navigate("AddSafeZoneScreen", { addSafeZone })
           }
           activeOpacity={0.8}
         >
-          <Text style={styles.addButtonText}>+ Add New Safe Zone</Text>
+          <Text style={[styles.addButtonText, { color: colors?.textColor }]}>
+            + Add New Safe Zone
+          </Text>
         </TouchableOpacity>
 
         {/* Safe Zones Section */}
         <View style={styles.safeZonesSection}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors?.textColor }]}>
             🛡️ Safe Zones ({safeZones.length})
           </Text>
 
           {safeZones.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No safe zones added yet</Text>
-              <Text style={styles.emptyStateSubText}>
+            <View
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor: colors?.surfaceColor,
+                  borderColor: colors?.borderColor,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.emptyStateText,
+                  { color: colors?.textSecondary },
+                ]}
+              >
+                No safe zones added yet
+              </Text>
+              <Text
+                style={[
+                  styles.emptyStateSubText,
+                  { color: colors?.textSecondary },
+                ]}
+              >
                 Tap the button above to create your first safe zone
               </Text>
             </View>
@@ -243,7 +296,10 @@ export default function MainScreen({ navigation }) {
                 <TouchableOpacity
                   style={[
                     styles.zoneCard,
-                    item.safe ? styles.safeZoneActive : styles.safeZoneInactive,
+                    {
+                      backgroundColor: colors?.cardColor,
+                      borderLeftColor: item.safe ? "#28a745" : "#ffc107",
+                    },
                   ]}
                   onPress={() =>
                     navigation.navigate("ViewSafeZone", {
@@ -253,16 +309,25 @@ export default function MainScreen({ navigation }) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.zoneHeader}>
-                    <Text style={styles.zoneName}>
+                    <Text
+                      style={[styles.zoneName, { color: colors?.textColor }]}
+                    >
                       {item.name || "Safe Zone"}
                     </Text>
                     <View
                       style={[
                         styles.statusBadge,
-                        item.safe ? styles.statusSafe : styles.statusUnsafe,
+                        item.safe
+                          ? { backgroundColor: "#d4edda" }
+                          : { backgroundColor: "#fff3cd" },
                       ]}
                     >
-                      <Text style={styles.statusText}>
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: colors?.textSecondary },
+                        ]}
+                      >
                         {item.safe ? "SAFE" : "OUTSIDE"}
                       </Text>
                     </View>
@@ -270,8 +335,20 @@ export default function MainScreen({ navigation }) {
 
                   <View style={styles.zoneDetails}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Location:</Text>
-                      <Text style={styles.detailValue}>
+                      <Text
+                        style={[
+                          styles.detailLabel,
+                          { color: colors?.textSecondary },
+                        ]}
+                      >
+                        Location:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: colors?.textColor },
+                        ]}
+                      >
                         {item.coordinates?.latitude != null &&
                         item.coordinates?.longitude != null
                           ? `${item.coordinates.latitude.toFixed(
@@ -281,8 +358,20 @@ export default function MainScreen({ navigation }) {
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Radius:</Text>
-                      <Text style={styles.detailValue}>
+                      <Text
+                        style={[
+                          styles.detailLabel,
+                          { color: colors?.textSecondary },
+                        ]}
+                      >
+                        Radius:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: colors?.textColor },
+                        ]}
+                      >
                         {item.radius != null ? `${item.radius} km` : "N/A"}
                       </Text>
                     </View>
@@ -292,9 +381,7 @@ export default function MainScreen({ navigation }) {
                     <Text
                       style={[
                         styles.statusIndicator,
-                        item.safe
-                          ? styles.statusTextSafe
-                          : styles.statusTextUnsafe,
+                        item.safe ? { color: "#28a745" } : { color: "#fd7e14" },
                       ]}
                     >
                       {item.safe
@@ -312,7 +399,9 @@ export default function MainScreen({ navigation }) {
 
         {/* Map Section */}
         <View style={styles.mapSection}>
-          <Text style={styles.sectionTitle}>🗺️ Live Map</Text>
+          <Text style={[styles.sectionTitle, { color: colors?.textColor }]}>
+            🗺️ Live Map
+          </Text>
           {location ? (
             <View style={styles.mapContainer}>
               <MapView
@@ -344,8 +433,20 @@ export default function MainScreen({ navigation }) {
               </MapView>
             </View>
           ) : (
-            <View style={styles.mapPlaceholder}>
-              <Text style={styles.mapPlaceholderText}>Loading map...</Text>
+            <View
+              style={[
+                styles.mapPlaceholder,
+                { backgroundColor: colors?.surfaceColor },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.mapPlaceholderText,
+                  { color: colors?.textSecondary },
+                ]}
+              >
+                Loading map...
+              </Text>
             </View>
           )}
         </View>
@@ -357,7 +458,6 @@ export default function MainScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
   },
   container: {
     flex: 1,
@@ -365,7 +465,6 @@ const styles = StyleSheet.create({
 
   // Header Styles
   header: {
-    backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     paddingVertical: 24,
     borderBottomWidth: 1,
@@ -374,7 +473,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#1a1a1a",
+
     marginBottom: 4,
   },
   subtitle: {

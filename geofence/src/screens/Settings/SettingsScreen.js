@@ -22,10 +22,9 @@ import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SettingScreen = () => {
-  const themeContext = useContext(ThemeContext);
-  const currentTheme = themeContext?.currentTheme || "light";
-  const toggleTheme = themeContext?.toggleTheme || (() => {});
+  const { colors, currentTheme, toggleTheme } = useContext(ThemeContext) || {};
   const { user, logout } = useContext(AuthContext);
+  const navigation = useNavigation();
 
   const [isDarkModeEnabled, setIsDarkModeEnabled] = useState(
     currentTheme === "dark"
@@ -41,27 +40,6 @@ const SettingScreen = () => {
   const [taskAccepted, setTaskAccepted] = useState(false);
   const [taskDenied, setTaskDenied] = useState(false);
 
-  const getThemeColors = () => {
-    const isDark = currentTheme === "dark";
-    return {
-      backgroundColor: isDark ? "#121212" : "#ffffff",
-      surfaceColor: isDark ? "#1e1e1e" : "#f8f9fa",
-      cardColor: isDark ? "#2c2c2c" : "#ffffff",
-      textColor: isDark ? "#ffffff" : "#000000",
-      textSecondary: isDark ? "#cccccc" : "#666666",
-      primary: "#008080",
-      primaryLight: "#39e0e0ff",
-      accent: "#FFA500",
-      borderColor: isDark ? "#404040" : "#f0f0f0",
-      switchTrackFalse: isDark ? "#404040" : "#008080",
-      switchTrackTrue: isDark ? "#4DD0E1" : "#efd39eff",
-      switchThumb: isDark ? "#4DD0E1" : "#f3f0eaff",
-    };
-  };
-
-  const colors = getThemeColors();
-  const navigation = useNavigation();
-
   useEffect(() => {
     setIsDarkModeEnabled(currentTheme === "dark");
   }, [currentTheme]);
@@ -69,16 +47,15 @@ const SettingScreen = () => {
   useEffect(() => {
     navigation.setOptions({
       title: "Settings",
-      headerStyle: { backgroundColor: colors.backgroundColor },
+      headerStyle: { backgroundColor: colors.surfaceColor },
       headerTintColor: colors.textColor,
     });
-  }, [navigation, colors.backgroundColor, colors.textColor]);
+  }, [navigation, colors]);
 
   // Toggle dark mode
   const toggleDarkMode = () => {
     const newTheme = currentTheme === "light" ? "dark" : "light";
     toggleTheme(newTheme);
-    setIsDarkModeEnabled(newTheme === "dark");
     saveNotificationSettings();
   };
 
@@ -101,16 +78,10 @@ const SettingScreen = () => {
           "Permission Required",
           "Location access is denied. Please enable it in settings.",
           [
-            {
-              text: "Cancel",
-              style: "cancel",
-              onPress: () => setIsLocationEnabled(false),
-            },
+            { text: "Cancel", style: "cancel" },
             {
               text: "Go to Settings",
-              onPress: async () => {
-                await Linking.openSettings();
-              },
+              onPress: async () => await Linking.openSettings(),
             },
           ]
         );
@@ -118,14 +89,9 @@ const SettingScreen = () => {
         let { status: requestStatus } =
           await Location.requestForegroundPermissionsAsync();
         if (requestStatus === "granted") {
-          try {
-            let loc = await Location.getCurrentPositionAsync({});
-            setIsLocationEnabled(true);
-            saveLocationSettings(true, loc);
-          } catch (error) {
-            console.error("Error getting location:", error);
-            setIsLocationEnabled(false);
-          }
+          let loc = await Location.getCurrentPositionAsync({});
+          setIsLocationEnabled(true);
+          saveLocationSettings(true, loc);
         } else {
           setIsLocationEnabled(false);
         }
@@ -136,7 +102,7 @@ const SettingScreen = () => {
     }
   };
 
-  // Save notification settings to backend
+  // Save notification settings
   const saveNotificationSettings = async () => {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
@@ -156,19 +122,17 @@ const SettingScreen = () => {
       };
 
       await API.put("/users/settings", notificationSettings, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error) {
       console.error(
         "Error saving notification settings:",
-        error?.response?.data || error.message || error
+        error?.response?.data || error.message
       );
     }
   };
 
-  // Save location settings to backend
+  // Save location settings
   const saveLocationSettings = async (enabled, location) => {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
@@ -185,84 +149,47 @@ const SettingScreen = () => {
           : null,
       };
 
-      await API.put("/users/settings", locationSettings);
+      await API.put("/users/settings", locationSettings, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch (error) {
       console.error(
         "Error saving location settings:",
-        error?.response?.data || error.message || error
-      );
-    }
-  };
-
-  // Load settings from backend
-  const loadSettings = async () => {
-    try {
-      const token = user?.token || (await AsyncStorage.getItem("token"));
-      if (!token) return;
-      const res = await API.get(`/users/settings`);
-      const settings = res.data;
-      if (settings) {
-        if (settings.notifications) {
-          setGeofenceEnter(!!settings.notifications.geofenceEnter);
-          setGeofenceExit(!!settings.notifications.geofenceExit);
-          setNewPersonAdded(!!settings.notifications.newPersonAdded);
-          setPersonLeft(!!settings.notifications.personLeft);
-          setTaskAssigned(!!settings.notifications.taskAssigned);
-          setTaskAccepted(!!settings.notifications.taskAccepted);
-          setTaskDenied(!!settings.notifications.taskDenied);
-        }
-        if (settings.locationEnabled !== undefined)
-          setIsLocationEnabled(!!settings.locationEnabled);
-      }
-    } catch (error) {
-      console.error(
-        "Error loading settings:",
-        error?.response?.data || error.message || error
+        error?.response?.data || error.message
       );
     }
   };
 
   const handleNotificationToggle = (setter, currentValue) => {
-    const newValue = !currentValue;
-    setter(newValue);
-    // save immediately
+    setter(!currentValue);
     saveNotificationSettings();
   };
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      async (nextState) => {
-        if (nextState === "active") {
-          let { status } = await Location.getForegroundPermissionsAsync();
-          setIsLocationEnabled(status === "granted");
-        }
+    const subscription = AppState.addEventListener("change", async (next) => {
+      if (next === "active") {
+        let { status } = await Location.getForegroundPermissionsAsync();
+        setIsLocationEnabled(status === "granted");
       }
-    );
-
-    loadSettings();
+    });
     return () => subscription?.remove();
-  }, [user]);
+  }, []);
 
   return (
     <View
-      style={[
-        styles.mainContainer,
-        { backgroundColor: colors.backgroundColor },
-      ]}
+      style={[styles.mainContainer, { backgroundColor: colors.backgroundColor }]}
     >
-      <ScrollView
-        style={{ backgroundColor: colors.backgroundColor, padding: 16 }}
-      >
+      <ScrollView style={{ backgroundColor: colors.backgroundColor }}>
         <View style={styles.container}>
+          {/* Theme Switch */}
           <Text style={[styles.title, { color: colors.textColor }]}>
             Theme Switch
           </Text>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primaryLight }]}
+            style={[styles.button, { backgroundColor: colors.cardColor }]}
           >
             <Text style={{ color: colors.textColor }}>
-              <MaterialIcons name="dark-mode" size={24} color={colors.accent} />{" "}
+              <MaterialIcons name="dark-mode" size={20} color={colors.accent} />{" "}
               Dark Mode
             </Text>
             <Switch
@@ -270,15 +197,13 @@ const SettingScreen = () => {
                 false: colors.switchTrackFalse,
                 true: colors.switchTrackTrue,
               }}
-              thumbColor={
-                isDarkModeEnabled ? colors.primary : colors.switchThumb
-              }
+              thumbColor={isDarkModeEnabled ? colors.primary : colors.switchThumb}
               onValueChange={toggleDarkMode}
               value={isDarkModeEnabled}
-              style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
             />
           </TouchableOpacity>
 
+          {/* Theme Setting */}
           <Text style={[styles.title, { color: colors.textColor }]}>
             Theme Setting
           </Text>
@@ -304,16 +229,64 @@ const SettingScreen = () => {
             colors={colors}
           />
 
+          {/* Notifications */}
+          <Text style={[styles.title, { color: colors.textColor }]}>
+            Notifications
+          </Text>
+          {[
+            { label: "Geofence Enter", state: geofenceEnter, setter: setGeofenceEnter },
+            { label: "Geofence Exit", state: geofenceExit, setter: setGeofenceExit },
+            { label: "New Person Added", state: newPersonAdded, setter: setNewPersonAdded },
+            { label: "Person Left", state: personLeft, setter: setPersonLeft },
+            { label: "Task Assigned", state: taskAssigned, setter: setTaskAssigned },
+            { label: "Task Accepted", state: taskAccepted, setter: setTaskAccepted },
+            { label: "Task Denied", state: taskDenied, setter: setTaskDenied },
+          ].map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.button, { backgroundColor: colors.cardColor }]}
+            >
+              <Text style={{ color: colors.textColor }}>{item.label}</Text>
+              <Switch
+                trackColor={{
+                  false: colors.switchTrackFalse,
+                  true: colors.switchTrackTrue,
+                }}
+                thumbColor={item.state ? colors.primary : colors.switchThumb}
+                onValueChange={() => handleNotificationToggle(item.setter, item.state)}
+                value={item.state}
+              />
+            </TouchableOpacity>
+          ))}
+
+          {/* Location */}
+          <Text style={[styles.title, { color: colors.textColor }]}>Location</Text>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.cardColor }]}
+          >
+            <Text style={{ color: colors.textColor }}>
+              <Ionicons name="location-sharp" size={20} color={colors.accent} />{" "}
+              Location Access
+            </Text>
+            <Switch
+              trackColor={{
+                false: colors.switchTrackFalse,
+                true: colors.switchTrackTrue,
+              }}
+              thumbColor={isLocationEnabled ? colors.primary : colors.switchThumb}
+              onValueChange={toggleLocation}
+              value={isLocationEnabled}
+            />
+          </TouchableOpacity>
+
+          {/* Privacy Settings */}
           <Text style={[styles.title, { color: colors.textColor }]}>
             Privacy Setting
           </Text>
           <TouchableOpacity
             style={[
               styles.privacyUpdate,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
+              { backgroundColor: colors.cardColor, borderColor: colors.borderColor },
             ]}
             onPress={() => navigation.navigate("Profile")}
           >
@@ -323,268 +296,12 @@ const SettingScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.privacyUpdate,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-            onPress={() => navigation.navigate("Profile")}
-          >
-            <MaterialIcons name="email" size={24} color={colors.primary} />
-            <MaterialIcons name="password" size={24} color={colors.primary} />
-            <Text style={[styles.privacyText, { color: colors.textColor }]}>
-              Change Email & Password
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.privacyUpdate,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-            onPress={() => navigation.navigate("Home", { screen: "AddPerson" })}
-          >
-            <MaterialIcons name="people" size={24} color={colors.primary} />
-            <Text style={[styles.privacyText, { color: colors.textColor }]}>
-              Manage Family Members
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.title, { color: colors.textColor }]}>
-            Location & Notification
-          </Text>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primaryLight }]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              <Ionicons name="location" size={24} color={colors.accent} />{" "}
-              Location Sharing
-            </Text>
-            <Switch
-              trackColor={{
-                false: colors.switchTrackFalse,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={
-                isLocationEnabled ? colors.primary : colors.switchThumb
-              }
-              onValueChange={toggleLocation}
-              value={isLocationEnabled}
-              style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
-            />
-          </TouchableOpacity>
-
-          <Text style={[styles.title, { color: colors.textColor }]}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={colors.accent}
-            />{" "}
-            Notification Preferences
-          </Text>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When Person Enters Geofence
-            </Text>
-            <Switch
-              value={geofenceEnter}
-              onValueChange={() =>
-                handleNotificationToggle(setGeofenceEnter, geofenceEnter)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={geofenceEnter ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When Person Exits Geofence
-            </Text>
-            <Switch
-              value={geofenceExit}
-              onValueChange={() =>
-                handleNotificationToggle(setGeofenceExit, geofenceExit)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={geofenceExit ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <Text style={[styles.title, { color: colors.textColor }]}>
-            <MaterialIcons
-              name="family-restroom"
-              size={24}
-              color={colors.accent}
-            />{" "}
-            Family Member Changes
-          </Text>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When New Person is Added
-            </Text>
-            <Switch
-              value={newPersonAdded}
-              onValueChange={() =>
-                handleNotificationToggle(setNewPersonAdded, newPersonAdded)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={
-                newPersonAdded ? colors.primary : colors.textSecondary
-              }
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When Someone Leaves the App
-            </Text>
-            <Switch
-              value={personLeft}
-              onValueChange={() =>
-                handleNotificationToggle(setPersonLeft, personLeft)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={personLeft ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <Text style={[styles.title, { color: colors.textColor }]}>
-            <MaterialIcons name="task" size={24} color={colors.accent} /> Task
-            Notifications
-          </Text>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When Task is Assigned
-            </Text>
-            <Switch
-              value={taskAssigned}
-              onValueChange={() =>
-                handleNotificationToggle(setTaskAssigned, taskAssigned)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={taskAssigned ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>
-              When Task is Accepted
-            </Text>
-            <Switch
-              value={taskAccepted}
-              onValueChange={() =>
-                handleNotificationToggle(setTaskAccepted, taskAccepted)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={taskAccepted ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.blankButton,
-              {
-                backgroundColor: colors.cardColor,
-                borderColor: colors.borderColor,
-              },
-            ]}
-          >
-            <Text style={{ color: colors.textColor }}>When Task is Denied</Text>
-            <Switch
-              value={taskDenied}
-              onValueChange={() =>
-                handleNotificationToggle(setTaskDenied, taskDenied)
-              }
-              trackColor={{
-                false: colors.borderColor,
-                true: colors.switchTrackTrue,
-              }}
-              thumbColor={taskDenied ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
+          {/* Logout */}
           <TouchableOpacity
             style={[styles.logoutButton, { borderColor: colors.borderColor }]}
-            onPress={() => logout()}
+            onPress={logout}
           >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Text style={[styles.logoutText, { color: colors.accent }]}>
                 Logout
               </Text>
@@ -607,15 +324,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  blankButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,

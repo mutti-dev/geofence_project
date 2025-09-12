@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 const ProfileScreen = () => {
   const { user, logout } = useContext(AuthContext);
+  const {colors} = useContext(ThemeContext);
   const navigation = useNavigation();
 
   return (
@@ -107,7 +109,7 @@ const ProfileScreen = () => {
                 <View style={styles.fieldIcon}>
                   <Text style={styles.iconText}>👥</Text>
                 </View>
-                <Text style={styles.fieldValue}>{user.circle}</Text>
+                <Text style={styles.fieldValue}>{user.circleName}</Text>
               </View>
             </View>
           )}

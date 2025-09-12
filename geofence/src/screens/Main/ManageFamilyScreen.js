@@ -12,41 +12,17 @@ import { AuthContext } from "../../contexts/AuthContext";
 import API from "../../api";
 import ScreenWrapper from "../../components/ScreenWrapper";
 import { useSocket } from "../../contexts/SocketContext";
+import { ThemeContext } from "../../contexts/ThemeContext";
 
 const ManageFamilyScreen = () => {
   const { user } = useContext(AuthContext);
   const [members, setMembers] = useState([]);
-  console.log("Members:", members);
-  const [invite, setInvite] = useState(null);
+  const { colors } = useContext(ThemeContext);
+  // console.log("Members:", members);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { socket, notifications, onlineUsers } = useSocket();
-  const [onlineMembers, setOnlineMembers] = useState([]);
-
-  // useEffect(() => {
-  //   // Join circle room
-  //   socket.current.emit("joinCircle", { circleId: CIRCLE_ID });
-
-  //   // Listen for location updates of members
-  //   socket.current.on("locationUpdate", (member) => {
-  //     setMembers((prev) => {
-  //       const index = prev.findIndex((m) => m._id === member._id);
-  //       if (index >= 0) {
-  //         prev[index] = member;
-  //       } else {
-  //         prev.push(member);
-  //       }
-  //       return [...prev];
-  //     });
-  //   });
-
-  //   // Listen for geofence notifications
-  //   socket.current.on("geofenceNotification", (data) => {
-  //     Alert.alert(data.message);
-  //   });
-
-  //   return () => socket.current.disconnect();
-  // }, []);
 
   const fetchMembers = async (isRefresh = false) => {
     try {
@@ -122,31 +98,43 @@ const ManageFamilyScreen = () => {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
+      <View
+        style={[styles.container, { backgroundColor: colors.backgroundColor }]}
+      >
         <FlatList
           data={members}
-          keyExtractor={(i) => i._id}
+          keyExtractor={(item) => item._id}
           renderItem={({ item }) => {
             const isOnline = onlineUsers?.includes(item._id);
 
             return (
-              <View style={styles.item}>
-                <Text style={styles.name}>
+              <View
+                style={[styles.item, { backgroundColor: colors.cardColor }]}
+              >
+                <Text style={[styles.name, { color: colors.textColor }]}>
                   {item.name} {item.role === "admin" ? "(Admin)" : ""}
                 </Text>
-                {isOnline ? (
-                  <Text style={styles.online}>Online</Text>
-                ) : (
-                  <Text style={styles.offline}>Offline</Text>
-                )}
+                <Text
+                  style={[
+                    isOnline ? styles.online : styles.offline,
+                    { color: isOnline ? colors.success : colors.error },
+                  ]}
+                >
+                  {isOnline ? "Online" : "Offline"}
+                </Text>
               </View>
             );
           }}
           ListEmptyComponent={() => (
-            <Text style={styles.empty}>No members</Text>
+            <Text style={[styles.empty, { color: colors.textSecondary }]}>
+              No members
+            </Text>
           )}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
+          contentContainerStyle={
+            members.length === 0 ? { flex: 1, justifyContent: "center" } : {}
+          }
         />
       </View>
     </ScreenWrapper>
@@ -156,7 +144,7 @@ const ManageFamilyScreen = () => {
 export default ManageFamilyScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -179,12 +167,10 @@ const styles = StyleSheet.create({
   removeText: { color: "#fff" },
   online: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "green",
+    fontWeight: "700",
   },
   offline: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "red",
+    fontWeight: "700",
   },
 });

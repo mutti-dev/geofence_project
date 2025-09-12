@@ -1,4 +1,5 @@
 export default function registerCircleSocket(io, socket) {
+  
   socket.on("joinCircle", ({ circleId }) => {
     socket.join(circleId);
     console.log(`User ${socket.id} joined circle: ${circleId}`);
