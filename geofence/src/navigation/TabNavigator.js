@@ -72,24 +72,13 @@ const TabNavigator = () => {
       <Tab.Screen name="Tasks" component={TaskScreen} />
 
       {/* Geofence/Geofence Management Tab */}
-      {user?.role === "admin" ? (
-        <Tab.Screen
-          name="Notifications"
-          component={NotificationScreen}
-          options={{ title: "Notifications" }}
-        />
-      ) : (
+      {user?.role === "admin" && (
         <Tab.Screen
           name="Geofence"
           component={GeofenceScreen}
           options={{ title: "Geofences" }}
         />
       )}
-      <Tab.Screen
-        name="Geofence"
-        component={GeofenceScreen}
-        options={{ title: "Geofences" }}
-      />
 
       {/* Live Map Tab (all users) */}
       <Tab.Screen
@@ -97,6 +86,15 @@ const TabNavigator = () => {
         component={LiveMapScreen}
         options={{ title: "Live Map" }}
       />
+
+      {/* Notifications Tab (all users) */}
+      {user.role === "admin" && (
+        <Tab.Screen
+          name="Notifications"
+          component={NotificationScreen}
+          options={{ title: "Notifications" }}
+        />
+      )}
 
       {/* Add Person (Admin Only) */}
       {user?.role === "admin" && (
@@ -118,12 +116,3 @@ const TabNavigator = () => {
 };
 
 export default TabNavigator;
-
-
-
-
-{/* <Tab.Screen
-name="GeofenceManagement"
-component={GeofenceManagementScreen}
-options={{ title: "Geofences" }}
-/> */}
