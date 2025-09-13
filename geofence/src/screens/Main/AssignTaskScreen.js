@@ -14,13 +14,23 @@ import API from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function AssignTaskScreen({ navigation }) {
+export default function AssignTaskScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
+  const { task } = route.params || {}; // yahan se edit ka task milega
+  console.log("Editing task:", task);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [description, setDescription] = useState("");
-  const [deadlineDays, setDeadlineDays] = useState(1);
+  const [selected, setSelected] = useState(task?.assignedTo || null);
+  const [description, setDescription] = useState(task?.description || "");
+  const [deadlineDays, setDeadlineDays] = useState(() => {
+  if (task?.deadline) {
+    const diff = Math.ceil(
+      (new Date(task.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    return diff > 0 ? diff : 1; // agar deadline past me ho to kam se kam 1 day dikhao
+  }
+  return 1; // default new task ke liye
+});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -54,18 +64,31 @@ export default function AssignTaskScreen({ navigation }) {
     try {
       const token = user?.token || (await AsyncStorage.getItem("token"));
       if (!token) return Alert.alert("Error", "Not authenticated");
+
       const deadline = new Date(
         Date.now() + deadlineDays * 24 * 60 * 60 * 1000
       ).toISOString();
+
       const payload = {
         assignedTo: selected._id || selected,
         description,
-        deadline,
+        deadline: null,
       };
-      const { data } = await API.post("/tasks", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      Alert.alert("Success", "Task assigned");
+
+      if (task?._id) {
+        // ✅ Update existing task
+        await API.put(`/tasks/${task._id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        Alert.alert("Success", "Task updated");
+      } else {
+        // ✅ Create new task
+        await API.post("/tasks", payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        Alert.alert("Success", "Task assigned");
+      }
+
       navigation.goBack();
     } catch (err) {
       console.log("assignTask error", err?.response?.data || err.message);

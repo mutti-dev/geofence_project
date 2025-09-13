@@ -1,5 +1,5 @@
-const WEB_SOCKET_URL = 'http://192.168.0.103:5000/';
-const API_URL = 'http://192.168.0.103:5000/api';
+const WEB_SOCKET_URL = 'https://1bbfa636f5f1.ngrok-free.app/';
+const API_URL = 'https://1bbfa636f5f1.ngrok-free.app/api';
 
 
 

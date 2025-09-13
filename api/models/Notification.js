@@ -13,7 +13,8 @@ const notificationSchema = new mongoose.Schema(
         "taskAssigned",
         "taskAccepted",
         "taskDenied",
-        "inviteCodeGenerated"
+        "inviteCodeGenerated",
+        "taskUpdated"
       ],
       required: true
     },

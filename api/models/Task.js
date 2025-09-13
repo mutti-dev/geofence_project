@@ -8,9 +8,13 @@ const taskSchema = new mongoose.Schema(
     description: { type: String, required: true },
     status: {
       type: String,
-      enum: ["pending", "accepted", "denied", "completed"],
+      enum: ["pending", "accepted", "denied", "completed", "expired"],
       default: "pending",
     },
+    // NEW: record acceptance without changing the top-level status
+    accepted: { type: Boolean, default: false },
+    acceptedAt: { type: Date, default: null },
+
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

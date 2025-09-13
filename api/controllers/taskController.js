@@ -64,7 +64,63 @@ export const createTask = async (req, res, next) => {
   }
 };
 
-// @desc Update task status (accept, deny, complete)
+// @desc Update task (admin update assignedTo/description/deadline)
+export const updateTask = async (req, res, next) => {
+  try {
+    const taskId = req.params.id;
+    console.log("Updating task", taskId, req.body);
+    const userId = req.user.id;
+    const { assignedTo, description, deadline } = req.body;
+
+    const task = await Task.findById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // Only circle admin or the creator of the task can edit
+    const circle = await Circle.findOne({ admin: userId, _id: task.circleId });
+    if (String(task.assignedBy) !== String(userId) && !circle) {
+      return res.status(403).json({ message: "Not authorized to edit task" });
+    }
+
+    if (assignedTo) {
+      // Validate assignedTo in same circle
+      const taskCircle = await Circle.findById(task.circleId);
+      if (!taskCircle.members.map((m) => m.toString()).includes(assignedTo)) {
+        return res.status(400).json({ message: "User not in the circle" });
+      }
+      task.assignedTo = assignedTo;
+    }
+
+    if (description) task.description = description;
+    if (deadline) task.deadline = deadline;
+
+    await task.save();
+
+    // notify assignee about update (optional)
+    const assignee = await User.findById(task.assignedTo);
+    if (assignee) {
+      const notification = await Notification.create({
+        user: assignee._id,
+        title: "Task Updated",
+        message: `${task.description} was updated`,
+        type: "taskUpdated",
+      });
+      if (assignee.pushToken) {
+        try {
+          await sendPush(assignee.pushToken, notification.title, notification.message);
+        } catch (err) {
+          console.error("Push notification failed", err);
+        }
+      }
+    }
+
+    res.json({ message: "Task updated", task });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Update task status (accept/deny/complete)
+// Body: { status: "completed" } etc
 export const updateTaskStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
@@ -72,45 +128,76 @@ export const updateTaskStatus = async (req, res, next) => {
     const userId = req.user.id;
 
     const task = await Task.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // If member is updating to completed: allow assigned user
+    if (status === "completed") {
+      if (String(task.assignedTo) !== String(userId) && String(task.assignedBy) !== String(userId)) {
+        // allow assigned user or creator (creator/admin)
+        // Also allow circle admin to mark completed via admin privileges
+        const circle = await Circle.findOne({ admin: userId, _id: task.circleId });
+        if (!circle) return res.status(403).json({ message: "Not authorized to mark completed" });
+      }
+      task.status = "completed";
+      await task.save();
+
+      // notify creator/admin about completion
+      const creator = await User.findById(task.assignedBy);
+      if (creator) {
+        const notification = await Notification.create({
+          user: creator._id,
+          title: "Task Completed",
+          message: `${task.description} - completed`,
+        });
+        if (creator.pushToken)
+          await sendPush(creator.pushToken, notification.title, notification.message);
+      }
+
+      return res.json({ message: "Task completed", task });
     }
 
-    // Only assigned user can accept/deny/complete
-    if (task.assignedTo.toString() !== userId) {
-      return res.status(403).json({ message: "Not authorized for this task" });
+    // For other statuses: enforce permission (e.g., only assigned user can change to denied)
+    if (status === "denied") {
+      if (String(task.assignedTo) !== String(userId)) {
+        return res.status(403).json({ message: "Not authorized for this task" });
+      }
+      task.status = "denied";
+      task.accepted = false;
+      task.acceptedAt = null;
+      await task.save();
+      // notify creator
+      const creator = await User.findById(task.assignedBy);
+      if (creator) {
+        const notification = await Notification.create({
+          user: creator._id,
+          title: "Task Denied",
+          message: `${task.description} - denied`,
+        });
+        if (creator.pushToken)
+          await sendPush(creator.pushToken, notification.title, notification.message);
+      }
+      return res.json({ message: "Task denied", task });
     }
 
-    // prevent updating expired tasks
-    if (task.status === "expired")
-      return res.status(400).json({ message: "Task is expired" });
-
-    task.status = status;
-    await task.save();
-
-    // notify creator about status change
-    const creator = await User.findById(task.assignedBy);
-    if (creator) {
-      const notification = await Notification.create({
-        user: creator._id,
-        title: "Task Status Updated",
-        message: `${task.description} - ${status}`,
-      });
-      if (creator.pushToken)
-        await sendPush(
-          creator.pushToken,
-          notification.title,
-          notification.message
-        );
+    // For admin-level status changes (e.g., admin forcing pending/expired etc)
+    // Allow if user is circle admin or task creator
+    const circleAdmin = await Circle.findOne({ admin: userId, _id: task.circleId });
+    if (!circleAdmin && String(task.assignedBy) !== String(userId)) {
+      return res.status(403).json({ message: "Not authorized to change status" });
     }
 
-    res.json({ message: `Task ${status}`, task });
+    if (status) {
+      task.status = status;
+      await task.save();
+      return res.json({ message: `Task ${status}`, task });
+    }
+
+    res.status(400).json({ message: "No status provided" });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc Get all tasks for current user (members see assigned tasks, admins see circle tasks)
 export const getCircleTasks = async (req, res, next) => {
   try {
     await expireTasksIfNeeded();
@@ -142,7 +229,6 @@ export const getCircleTasks = async (req, res, next) => {
   }
 };
 
-// @desc Delete a task (only creator or circle admin can delete)
 export const deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -178,7 +264,6 @@ export const acceptTask = async (req, res, next) => {
   try {
     const taskId = req.params.id;
     const userId = req.user.id;
-    console.log("Accepting task", taskId, "by user", userId);
 
     const task = await Task.findById(taskId);
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -192,10 +277,13 @@ export const acceptTask = async (req, res, next) => {
     if (task.status === "expired")
       return res.status(400).json({ message: "Task is expired" });
 
-    task.status = "accepted";
+    // Now: mark as accepted but keep status as "pending" so member still sees it as pending
+    task.accepted = true;
+    task.acceptedAt = new Date();
+    // keep task.status as-is (pending)
     await task.save();
 
-    // Notify creator
+    // Notify creator/admin
     const creator = await User.findById(task.assignedBy);
     if (creator) {
       const notification = await Notification.create({
@@ -234,8 +322,12 @@ export const declineTask = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" });
     if (task.status === "expired")
       return res.status(400).json({ message: "Task is expired" });
+
     task.status = "denied";
+    task.accepted = false;
+    task.acceptedAt = null;
     await task.save();
+
     const creator = await User.findById(task.assignedBy);
     if (creator) {
       const notification = await Notification.create({

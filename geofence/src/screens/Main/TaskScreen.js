@@ -40,7 +40,6 @@ const TaskScreen = () => {
         return;
       }
 
-      // always use /tasks/my which returns admin or member tasks based on server logic
       const { data } = await API.get("/tasks/my", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -52,7 +51,6 @@ const TaskScreen = () => {
         error?.response?.data || error.message
       );
 
-      // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
           { text: "OK", onPress: () => logout() },
@@ -76,14 +74,18 @@ const TaskScreen = () => {
         return;
       }
 
-      await API.post(`/tasks/${taskId}/accept`);
+      await API.post(
+        `/tasks/${taskId}/accept`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
+      // re-fetch to reflect accepted flag/notifications
       fetchTasks();
       Alert.alert("Success", "Task accepted successfully!");
     } catch (error) {
       console.log("accept error", error?.response?.data || error.message);
 
-      // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
           { text: "OK", onPress: () => logout() },
@@ -103,13 +105,16 @@ const TaskScreen = () => {
         return;
       }
 
-      await API.post(`/tasks/${taskId}/decline`);
+      await API.post(
+        `/tasks/${taskId}/decline`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       fetchTasks();
       Alert.alert("Success", "Task declined successfully!");
     } catch (error) {
       console.log("decline error", error?.response?.data || error.message);
 
-      // Handle authentication errors
       if (error?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
           { text: "OK", onPress: () => logout() },
@@ -129,13 +134,14 @@ const TaskScreen = () => {
         return;
       }
 
-      await API.delete(`/tasks/${taskId}`);
+      await API.delete(`/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
       Alert.alert("Success", "Task deleted");
     } catch (err) {
       console.log("delete error", err?.response?.data || err.message);
 
-      // Handle authentication errors
       if (err?.response?.status === 401) {
         Alert.alert("Session Expired", "Please log in again", [
           { text: "OK", onPress: () => logout() },
@@ -159,8 +165,19 @@ const TaskScreen = () => {
       Alert.alert("Success", `Task marked as ${newStatus}`);
     } catch (err) {
       console.log("update status error", err?.response?.data || err.message);
+      if (err?.response?.status === 401) {
+        Alert.alert("Session Expired", "Please log in again", [
+          { text: "OK", onPress: () => logout() },
+        ]);
+        return;
+      }
       Alert.alert("Error", "Failed to update task status");
     }
+  };
+
+  // convenience to mark done (member)
+  const handleMarkDone = async (taskId) => {
+    await handleUpdateStatus(taskId, "completed");
   };
 
   const onRefresh = () => {
@@ -236,14 +253,16 @@ const TaskScreen = () => {
         task={item}
         onAccept={handleAccept}
         onDecline={handleDecline}
+        onDone={handleMarkDone}
         onDelete={handleDelete}
-        onUpdateStatus={handleUpdateStatus}
+        onEdit={(task) => navigation.navigate("AssignTask", { task })}
         isAdmin={user?.role === "admin"}
+        currentUserId={user?._id}
       />
 
       {user?.role === "admin" && (
         <View style={styles.adminActionRow}>
-          {["pending", "accepted", "declined", "completed"].map((status) => (
+          {["pending", "accepted", "denied", "completed"].map((status) => (
             <TouchableOpacity
               key={status}
               style={[

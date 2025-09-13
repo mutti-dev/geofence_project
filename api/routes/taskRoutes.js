@@ -7,6 +7,7 @@ import {
   deleteTask,
   acceptTask,
   declineTask,
+  updateTask
 } from "../controllers/taskController.js";
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.get("/my", protect, getCircleTasks);
 
 // Update task status (accept/deny/complete)
 router.put("/:id/status", protect, updateTaskStatus);
+
+router.put("/:id", protect, updateTask);
 
 // Delete a task
 router.delete("/:id", protect, deleteTask);
